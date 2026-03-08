@@ -6,10 +6,12 @@
 export interface ScanResult {
   id: string;
   timestamp: string;
-  label: 'Queen' | 'Smooth Cayenne';
+  label: string;
   confidence: number;
-  quality?: 'Premium' | 'Grade A' | 'Grade B' | 'Standard';
+  quality?: string;
   qualityConfidence?: number;
+  maturity?: string;
+  maturityConfidence?: number;
   image?: string;
   notes?: string;
 }
@@ -43,7 +45,7 @@ export interface ScanStats {
 
 // Filter types
 export type SortOption = 'recent' | 'oldest' | 'confidence-high' | 'confidence-low';
-export type FilterVariety = 'all' | 'Queen' | 'Smooth Cayenne';
+export type FilterVariety = 'all' | 'Queen' | 'Smooth' | 'Smooth Cayenne';
 export type ViewMode = 'list' | 'grid';
 
 export interface StorageFilters {

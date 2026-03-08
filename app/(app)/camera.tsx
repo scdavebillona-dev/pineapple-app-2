@@ -29,6 +29,8 @@ interface ScanResult {
   image?: string;
   quality?: string;
   qualityConfidence?: number;
+  maturity?: string;
+  maturityConfidence?: number;
 }
 
 function formatTimestamp(iso: string): string {
@@ -140,6 +142,8 @@ export default function CameraScreen() {
         image: uri,
         quality: inferenceResult.quality.label?.replace(/High Quality/i, 'Extra Class') || 'Extra Class',
         qualityConfidence: inferenceResult.quality.confidence,
+        maturity: inferenceResult.maturity.label !== 'Unknown' ? inferenceResult.maturity.label : undefined,
+        maturityConfidence: inferenceResult.maturity.confidence,
       };
       setCurrentResult(result);
       setShowResultModal(true);
@@ -161,7 +165,8 @@ export default function CameraScreen() {
         uri: currentResult.image,
         timestamp: currentResult.timestamp,
         quality: currentResult.quality?.replace(/High Quality/i, 'Extra Class') || 'Extra Class',
-        metadata: { qualityConfidence: currentResult.qualityConfidence },
+        maturity: currentResult.maturity,
+        metadata: { qualityConfidence: currentResult.qualityConfidence, maturityConfidence: currentResult.maturityConfidence },
       });
       // Show animated saved modal
       savedScale.setValue(0);
@@ -257,6 +262,11 @@ export default function CameraScreen() {
               </View>
               <View style={styles.resultDivider} />
               <View style={styles.resultRow}>
+                <Text style={styles.rowLabel}>Maturity</Text>
+                <Text style={styles.rowValue}>{currentResult?.maturity ?? '—'}</Text>
+              </View>
+              <View style={styles.resultDivider} />
+              <View style={styles.resultRow}>
                 <Text style={styles.rowLabel}>Confidence Level</Text>
                 <TouchableOpacity onPress={() => {
                   if (!currentResult) return;
@@ -264,7 +274,10 @@ export default function CameraScreen() {
                   const clsConf = currentResult.qualityConfidence
                     ? (currentResult.qualityConfidence * 100).toFixed(1) + '%'
                     : 'N/A';
-                  Alert.alert('Confidence Details', `Variety: ${varConf}\nClass: ${clsConf}`);
+                  const matConf = currentResult.maturityConfidence
+                    ? (currentResult.maturityConfidence * 100).toFixed(1) + '%'
+                    : 'N/A';
+                  Alert.alert('Confidence Details', `Variety: ${varConf}\nClass: ${clsConf}\nMaturity: ${matConf}`);
                 }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                   <MaterialIcons name="visibility" size={20} color={colors.primary} />
                 </TouchableOpacity>

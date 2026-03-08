@@ -17,7 +17,7 @@ export function getTimeGreeting(): string {
 export function calculateStats(scans: ScanResult[]): ScanStats {
   const total = scans.length;
   const queen = scans.filter((s) => s.label === 'Queen').length;
-  const smoothCayenne = scans.filter((s) => s.label === 'Smooth Cayenne').length;
+  const smoothCayenne = scans.filter((s) => s.label === 'Smooth' || s.label === 'Smooth Cayenne').length;
   
   const avgConfidence =
     total > 0

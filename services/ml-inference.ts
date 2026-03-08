@@ -15,11 +15,12 @@ interface ModelOutput {
 }
 
 /**
- * Combined inference output with variety, quality, and detection
+ * Combined inference output with variety, quality, maturity, and detection
  */
 export interface InferenceResult {
   variety: ModelOutput;
   quality: ModelOutput;
+  maturity: ModelOutput;
   detection: {
     hasPineapple: boolean;
     predictions: number;
@@ -36,7 +37,7 @@ interface PreprocessedFrame {
 // Pineapple variety class labels
 const VARIETY_LABELS = [
   'Queen',
-  'Smooth Cayenne'
+  'Smooth',
 ];
 
 // Pineapple quality class labels
@@ -44,7 +45,15 @@ const QUALITY_LABELS = [
   'Class I',
   'Class II',
   'Extra Class',
-  'Reject'
+  'Reject',
+];
+
+// Pineapple maturity class labels
+const MATURITY_LABELS = [
+  'Unripe',
+  'Underripe',
+  'Ripe',
+  'Overripe',
 ];
 
 /**
@@ -54,7 +63,20 @@ function normalizeVarietyClassName(className: string): string {
   if (!className) return 'Unknown';
   const lowerClass = className.toLowerCase().trim();
   if (lowerClass.includes('queen')) return 'Queen';
-  if (lowerClass.includes('cayenne') || lowerClass.includes('cayene') || lowerClass.includes('smooth')) return 'Smooth Cayenne';
+  if (lowerClass.includes('cayenne') || lowerClass.includes('cayene') || lowerClass.includes('smooth')) return 'Smooth';
+  return className;
+}
+
+/**
+ * Normalize maturity class names from Roboflow
+ */
+function normalizeMaturityClassName(className: string): string {
+  if (!className) return 'Unknown';
+  const lowerClass = className.toLowerCase().trim();
+  if (lowerClass.includes('overripe') || lowerClass.includes('over')) return 'Overripe';
+  if (lowerClass.includes('underripe') || lowerClass.includes('under')) return 'Underripe';
+  if (lowerClass.includes('unripe')) return 'Unripe';
+  if (lowerClass.includes('ripe')) return 'Ripe';
   return className;
 }
 
@@ -75,9 +97,11 @@ function normalizeQualityClassName(className: string): string {
 const ROBOFLOW_API_KEY = 'P1f8r2nKTs3WwrwEclON';
 const VARIETY_MODEL_ID = 'pineapple-variety-honut/4';
 const QUALITY_MODEL_ID = 'pineapple_quality/2';
+const MATURITY_MODEL_ID = 'maturity-kahvp/2';
 const DETECTION_MODEL_ID = 'pineapple-detection-ygkhd/3';
 const VARIETY_API_URL = `https://detect.roboflow.com/${VARIETY_MODEL_ID}`;
 const QUALITY_API_URL = `https://detect.roboflow.com/${QUALITY_MODEL_ID}`;
+const MATURITY_API_URL = `https://classify.roboflow.com/${MATURITY_MODEL_ID}`;
 const DETECTION_API_URL = `https://detect.roboflow.com/${DETECTION_MODEL_ID}`;
 
 let modelLoaded = false;
@@ -98,10 +122,12 @@ export async function loadModel() {
     console.log('📊 Quality Classes: Class I, Class II, Extra Class, Reject');
     console.log('🤖 Variety Model: pineapple-variety-honut/4');
     console.log('🤖 Quality Model: pineapple_quality/2');
+    console.log('🌿 Maturity Classes: Unripe, Underripe, Ripe, Overripe');
+    console.log('🤖 Maturity Model: maturity-kahvp/2');
     
     return { 
       loaded: true, 
-      modelName: 'Roboflow API (Dual Models)',
+      modelName: 'Roboflow API (Triple Models)',
       framework: 'Roboflow Cloud'
     };
   } catch (error) {
@@ -229,6 +255,62 @@ function postprocessQualityOutput(apiResponse: any): ModelOutput {
 }
 
 /**
+ * Post-process Roboflow classify API response for maturity
+ */
+function postprocessMaturityOutput(apiResponse: any): ModelOutput {
+  try {
+    if (!apiResponse) {
+      throw new Error('No API response');
+    }
+
+    // Classification API returns { top, confidence, predictions: [{class, confidence}] }
+    let topPrediction = 'Unknown';
+    let topConfidence = 0;
+
+    if (apiResponse.top) {
+      topPrediction = normalizeMaturityClassName(apiResponse.top);
+      topConfidence = apiResponse.confidence || 0;
+    } else {
+      const predictions = apiResponse.predictions || [];
+      if (Array.isArray(predictions)) {
+        for (const pred of predictions) {
+          const c = pred.confidence || 0;
+          const cl = normalizeMaturityClassName(pred.class || 'Unknown');
+          if (c > topConfidence) {
+            topConfidence = c;
+            topPrediction = cl;
+          }
+        }
+      } else {
+        // predictions can also be an object keyed by class name
+        for (const [cls, val] of Object.entries(predictions)) {
+          const c = (val as any).confidence ?? (typeof val === 'number' ? val : 0);
+          if (c > topConfidence) {
+            topConfidence = c;
+            topPrediction = normalizeMaturityClassName(cls);
+          }
+        }
+      }
+    }
+
+    console.log(`✅ Maturity: ${topPrediction} (${(topConfidence * 100).toFixed(1)}%)`);
+
+    return {
+      label: topPrediction,
+      confidence: Math.min(Math.max(topConfidence, 0), 1),
+      classIndex: MATURITY_LABELS.indexOf(topPrediction),
+    };
+  } catch (error) {
+    console.error('❌ Maturity post-processing error:', error);
+    return {
+      label: 'Unknown',
+      confidence: 0,
+      classIndex: -1,
+    };
+  }
+}
+
+/**
  * Post-process Roboflow API response for detection
  * Returns whether pineapple was detected
  */
@@ -318,15 +400,19 @@ export async function performInference(
     const base64 = await imageUriToBase64(imageUri);
     console.log('✅ Image converted to base64');
     
-    // Call all three APIs in parallel
-    console.log('🚀 Calling all three models in parallel...');
-    const [varietyResponse, qualityResponse, detectionResponse] = await Promise.all([
+    // Call all four APIs in parallel
+    console.log('🚀 Calling all four models in parallel...');
+    const [varietyResponse, qualityResponse, maturityResponse, detectionResponse] = await Promise.all([
       callRoboflowAPI(base64, VARIETY_API_URL, 'Variety Model').catch(err => {
         console.error('Variety API failed:', err);
         return null;
       }),
       callRoboflowAPI(base64, QUALITY_API_URL, 'Quality Model').catch(err => {
         console.error('Quality API failed:', err);
+        return null;
+      }),
+      callRoboflowAPI(base64, MATURITY_API_URL, 'Maturity Model').catch(err => {
+        console.error('Maturity API failed:', err);
         return null;
       }),
       callRoboflowAPI(base64, DETECTION_API_URL, 'Detection Model').catch(err => {
@@ -341,15 +427,18 @@ export async function performInference(
     // Process other responses
     const varietyResult = postprocessVarietyOutput(varietyResponse);
     const qualityResult = postprocessQualityOutput(qualityResponse);
+    const maturityResult = postprocessMaturityOutput(maturityResponse);
     
     console.log(`✅ Final Results:`);
     console.log(`  🍍 Variety: ${varietyResult.label} (${(varietyResult.confidence * 100).toFixed(1)}%)`);
     console.log(`  📊 Quality: ${qualityResult.label} (${(qualityResult.confidence * 100).toFixed(1)}%)`);
+    console.log(`  🌿 Maturity: ${maturityResult.label} (${(maturityResult.confidence * 100).toFixed(1)}%)`);
     console.log(`  🔍 Detection: ${detectionResult.hasPineapple ? 'Pineapple Detected' : 'No Pineapple Detected'}`);
     
     return {
       variety: varietyResult,
       quality: qualityResult,
+      maturity: maturityResult,
       detection: detectionResult,
     };
   } catch (error) {
@@ -362,6 +451,11 @@ export async function performInference(
       },
       quality: {
         label: 'Inference Failed',
+        confidence: 0,
+        classIndex: -1,
+      },
+      maturity: {
+        label: 'Unknown',
         confidence: 0,
         classIndex: -1,
       },

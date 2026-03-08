@@ -4,7 +4,7 @@
  */
 
 export { Avatar } from './avatar';
-export { Badge, ConfidenceBadge, QualityBadge } from './badge';
+export { Badge, ConfidenceBadge, MaturityBadge, QualityBadge } from './badge';
 export { Button } from './button';
 export { Card } from './card';
 export { EmptyState } from './empty-state';

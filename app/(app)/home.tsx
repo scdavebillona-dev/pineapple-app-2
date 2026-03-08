@@ -38,6 +38,8 @@ export default function HomeScreen() {
           image: s.uri || s.image || '',
           quality: s.quality || '',
           qualityConfidence: s.metadata?.qualityConfidence,
+          maturity: s.maturity || undefined,
+          maturityConfidence: s.metadata?.maturityConfidence,
         }));
         const sortedScans = formattedScans.sort(
           (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()

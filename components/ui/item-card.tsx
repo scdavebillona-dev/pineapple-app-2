@@ -12,7 +12,7 @@ import { BorderRadius, Shadows, Spacing, Typography } from '@/constants/theme';
 import { useColors } from '@/hooks/use-colors';
 import { ScanResult } from '@/types';
 import { formatRelativeTime } from '@/utils/format';
-import { QualityBadge } from './badge';
+import { MaturityBadge, QualityBadge } from './badge';
 
 interface ItemCardProps {
   item: ScanResult;
@@ -44,10 +44,15 @@ export function ItemCard({ item, onPress, onDelete, style }: ItemCardProps) {
       {/* Content */}
       <View style={styles.content}>
         <View style={styles.header}>
-          <Text style={[styles.label, { color: colors.text }]}>{item.label}</Text>
-          {item.quality && (
-            <QualityBadge quality={item.quality} size="sm" style={styles.qualityBadge} />
-          )}
+          <Text style={[styles.label, { color: colors.text }]} numberOfLines={1}>{item.label}</Text>
+          <View style={styles.badges}>
+            {item.quality && (
+              <QualityBadge quality={item.quality} size="sm" />
+            )}
+            {item.maturity && (
+              <MaturityBadge maturity={item.maturity} size="sm" />
+            )}
+          </View>
         </View>
         
         <Text style={[styles.timestamp, { color: colors.textMuted }]}>{formatRelativeTime(item.timestamp)}</Text>
@@ -171,9 +176,9 @@ const styles = StyleSheet.create({
   badges: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  qualityBadge: {
-    marginLeft: Spacing.xs,
+    gap: Spacing.xs,
+    flexShrink: 1,
+    flexWrap: 'wrap',
   },
   timestamp: {
     ...Typography.caption,

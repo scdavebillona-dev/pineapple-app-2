@@ -169,6 +169,68 @@ export function QualityBadge({ quality, size = 'md', style }: QualityBadgeProps)
   return <Badge label={quality} variant={variant} size={size} style={style} />;
 }
 
+/**
+ * Maturity Badge - Displays maturity stage with pineapple-specific colors
+ * Unripe=green, Underripe=lime, Ripe=amber/yellow, Overripe=orange
+ */
+interface MaturityBadgeProps {
+  maturity: string;
+  size?: BadgeSize;
+  style?: ViewStyle;
+}
+
+const MATURITY_COLORS: Record<string, { light: { bg: string; text: string; border: string }; dark: { bg: string; text: string; border: string } }> = {
+  Unripe: {
+    light: { bg: '#DCFCE7', text: '#14532D', border: '#22C55E' },
+    dark:  { bg: 'rgba(34,197,94,0.22)', text: '#86EFAC', border: '#22C55E' },
+  },
+  Underripe: {
+    light: { bg: '#ECFCCB', text: '#365314', border: '#84CC16' },
+    dark:  { bg: 'rgba(132,204,22,0.22)', text: '#BEF264', border: '#84CC16' },
+  },
+  Ripe: {
+    light: { bg: '#FEF9C3', text: '#713F12', border: '#EAB308' },
+    dark:  { bg: 'rgba(234,179,8,0.22)', text: '#FDE047', border: '#EAB308' },
+  },
+  Overripe: {
+    light: { bg: '#FFEDD5', text: '#7C2D12', border: '#F97316' },
+    dark:  { bg: 'rgba(249,115,22,0.22)', text: '#FB923C', border: '#F97316' },
+  },
+};
+
+export function MaturityBadge({ maturity, size = 'md', style }: MaturityBadgeProps) {
+  const scheme = useColorScheme();
+  const isDark = scheme === 'dark';
+  const sStyle = sizeStyles[size];
+
+  const colors = MATURITY_COLORS[maturity];
+  const c = colors ? (isDark ? colors.dark : colors.light) : null;
+
+  if (!c) {
+    return <Badge label={maturity} variant="default" size={size} style={style} />;
+  }
+
+  return (
+    <View
+      style={[
+        styles.badge,
+        {
+          backgroundColor: c.bg,
+          borderColor: c.border,
+          borderWidth: 1,
+          paddingVertical: sStyle.paddingVertical,
+          paddingHorizontal: sStyle.paddingHorizontal,
+        },
+        style,
+      ]}
+    >
+      <Text style={[styles.text, { color: c.text, fontSize: sStyle.fontSize }]}>
+        {maturity}
+      </Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   badge: {
     borderRadius: BorderRadius.full,

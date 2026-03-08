@@ -28,6 +28,7 @@ type ScanItem = {
   uri: string;
   date: string;
   quality?: string;
+  maturity?: string;
   metadata?: any;
 };
 
@@ -75,6 +76,7 @@ export default function StorageScreen() {
         uri: s.uri || s.imageUri || '',
         date: s.timestamp || new Date().toISOString(),
         quality: s.quality?.replace(/High Quality/i, 'Extra Class') || (s.confidence > 0.85 ? 'Extra Class' : 'Standard'),
+        maturity: s.maturity || undefined,
           metadata: s.metadata,      }));
 
       setItems(formattedScans);      setFilteredItems(formattedScans);
@@ -158,7 +160,9 @@ export default function StorageScreen() {
         confidence: item.confidence,
         timestamp: item.date,
         image: item.uri,
-        quality: item.quality as any, qualityConfidence: item.metadata?.qualityConfidence,
+        quality: item.quality as any,
+        maturity: item.maturity,
+        qualityConfidence: item.metadata?.qualityConfidence,
       }}
       onPress={() => openDetails(item)}
         onDelete={() => handleDelete(item.id, item.date)}
@@ -277,6 +281,11 @@ export default function StorageScreen() {
                   </View>
                   <View style={styles.resultDivider} />
                   <View style={styles.resultRow}>
+                    <Text style={styles.rowLabel}>Maturity</Text>
+                    <Text style={styles.rowValue}>{selectedItem.maturity || '—'}</Text>
+                  </View>
+                  <View style={styles.resultDivider} />
+                  <View style={styles.resultRow}>
                     <Text style={styles.rowLabel}>Confidence Level</Text>
                     <TouchableOpacity
                       onPress={() => {
@@ -284,7 +293,10 @@ export default function StorageScreen() {
                         const clsConf = selectedItem.metadata?.qualityConfidence
                           ? (selectedItem.metadata.qualityConfidence * 100).toFixed(1) + '%'
                           : 'N/A';
-                        Alert.alert('Confidence Details', `Variety: ${varConf}\nClass: ${clsConf}`);
+                        const matConf = selectedItem.metadata?.maturityConfidence
+                          ? (selectedItem.metadata.maturityConfidence * 100).toFixed(1) + '%'
+                          : 'N/A';
+                        Alert.alert('Confidence Details', `Variety: ${varConf}\nClass: ${clsConf}\nMaturity: ${matConf}`);
                       }}
                       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     >
