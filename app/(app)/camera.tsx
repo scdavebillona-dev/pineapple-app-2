@@ -252,22 +252,22 @@ export default function CameraScreen() {
 
             <View style={styles.resultRows}>
               <View style={styles.resultRow}>
-                <Text style={styles.rowLabel}>Variety</Text>
+                <Text style={styles.rowLabel}>Variety :</Text>
                 <Text style={styles.rowValue}>{currentResult?.label?.replace('Smooth Cayenne', 'Smooth') ?? '—'}</Text>
               </View>
               <View style={styles.resultDivider} />
               <View style={styles.resultRow}>
-                <Text style={styles.rowLabel}>Class</Text>
+                <Text style={styles.rowLabel}>Class :</Text>
                 <Text style={styles.rowValue}>{currentResult?.quality ?? '—'}</Text>
               </View>
               <View style={styles.resultDivider} />
               <View style={styles.resultRow}>
-                <Text style={styles.rowLabel}>Maturity</Text>
+                <Text style={styles.rowLabel}>Maturity :</Text>
                 <Text style={styles.rowValue}>{currentResult?.maturity ?? '—'}</Text>
               </View>
               <View style={styles.resultDivider} />
               <View style={styles.resultRow}>
-                <Text style={styles.rowLabel}>Confidence Level</Text>
+                <Text style={styles.rowLabel}>Confidence Level :</Text>
                 <TouchableOpacity onPress={() => {
                   if (!currentResult) return;
                   const varConf = (currentResult.confidence * 100).toFixed(1) + '%';
@@ -284,7 +284,7 @@ export default function CameraScreen() {
               </View>
               <View style={styles.resultDivider} />
               <View style={styles.resultRow}>
-                <Text style={styles.rowLabel}>Timestamp</Text>
+                <Text style={styles.rowLabel}>Timestamp :</Text>
                 <Text style={[styles.rowValue, styles.timestampValue]}>
                   {currentResult ? formatTimestamp(currentResult.timestamp) : '—'}
                 </Text>
@@ -473,7 +473,7 @@ const createCameraStyles = (colors: typeof Colors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: Spacing.md,
-    gap: Spacing.lg,
+    gap: Spacing.sm,
   },
   resultDivider: {
     height: 1,

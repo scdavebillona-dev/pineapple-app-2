@@ -278,22 +278,22 @@ export default function StorageScreen() {
                 {/* Rows */}
                 <View style={styles.resultRows}>
                   <View style={styles.resultRow}>
-                    <Text style={styles.rowLabel}>Variety</Text>
+                    <Text style={styles.rowLabel}>Variety :</Text>
                     <Text style={styles.rowValue}>{selectedItem.name?.replace('Smooth Cayenne', 'Smooth')}</Text>
                   </View>
                   <View style={styles.resultDivider} />
                   <View style={styles.resultRow}>
-                    <Text style={styles.rowLabel}>Class</Text>
+                    <Text style={styles.rowLabel}>Class :</Text>
                     <Text style={styles.rowValue}>{selectedItem.quality || 'Unknown'}</Text>
                   </View>
                   <View style={styles.resultDivider} />
                   <View style={styles.resultRow}>
-                    <Text style={styles.rowLabel}>Maturity</Text>
+                    <Text style={styles.rowLabel}>Maturity :</Text>
                     <Text style={styles.rowValue}>{selectedItem.maturity || '—'}</Text>
                   </View>
                   <View style={styles.resultDivider} />
                   <View style={styles.resultRow}>
-                    <Text style={styles.rowLabel}>Confidence Level</Text>
+                    <Text style={styles.rowLabel}>Confidence Level :</Text>
                     <TouchableOpacity
                       onPress={() => {
                         const varConf = (selectedItem.confidence * 100).toFixed(1) + '%';
@@ -312,7 +312,7 @@ export default function StorageScreen() {
                   </View>
                   <View style={styles.resultDivider} />
                   <View style={styles.resultRow}>
-                    <Text style={styles.rowLabel}>Timestamp</Text>
+                    <Text style={styles.rowLabel}>Timestamp :</Text>
                     <Text style={[styles.rowValue, styles.timestampValue]}>
                       {formatDescriptiveDate(selectedItem.date)}
                     </Text>
@@ -462,7 +462,7 @@ const createStorageStyles = (colors: typeof Colors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: Spacing.md,
-    gap: Spacing.lg,
+    gap: Spacing.sm,
   },
   resultDivider: {
     height: 1,
