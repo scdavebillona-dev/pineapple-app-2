@@ -279,7 +279,9 @@ export default function StorageScreen() {
                 <View style={styles.resultRows}>
                   <View style={styles.resultRow}>
                     <Text style={styles.rowLabel}>Variety :</Text>
-                    <Text style={styles.rowValue}>{selectedItem.name?.replace('Smooth Cayenne', 'Smooth')}</Text>
+                    <Text style={styles.rowValue}>
+                      {selectedItem.name === 'Smooth' ? 'Smooth Cayenne' : selectedItem.name}
+                    </Text>
                   </View>
                   <View style={styles.resultDivider} />
                   <View style={styles.resultRow}>
@@ -462,7 +464,7 @@ const createStorageStyles = (colors: typeof Colors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: Spacing.md,
-    gap: Spacing.sm,
+    gap: Spacing.xs,
   },
   resultDivider: {
     height: 1,
@@ -471,7 +473,7 @@ const createStorageStyles = (colors: typeof Colors) => StyleSheet.create({
   rowLabel: {
     ...Typography.bodyMedium,
     color: colors.textMuted,
-    minWidth: 100,
+    marginRight: Spacing.xs,
   } as any,
   rowValue: {
     ...Typography.bodySemiBold,

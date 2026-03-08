@@ -253,7 +253,9 @@ export default function CameraScreen() {
             <View style={styles.resultRows}>
               <View style={styles.resultRow}>
                 <Text style={styles.rowLabel}>Variety :</Text>
-                <Text style={styles.rowValue}>{currentResult?.label?.replace('Smooth Cayenne', 'Smooth') ?? '—'}</Text>
+                <Text style={styles.rowValue}>
+                  {currentResult?.label === 'Smooth' ? 'Smooth Cayenne' : (currentResult?.label ?? '—')}
+                </Text>
               </View>
               <View style={styles.resultDivider} />
               <View style={styles.resultRow}>
@@ -473,7 +475,7 @@ const createCameraStyles = (colors: typeof Colors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: Spacing.md,
-    gap: Spacing.sm,
+    gap: Spacing.xs,
   },
   resultDivider: {
     height: 1,
@@ -482,7 +484,7 @@ const createCameraStyles = (colors: typeof Colors) => StyleSheet.create({
   rowLabel: {
     ...Typography.bodyMedium,
     color: colors.textMuted,
-    minWidth: 100,
+    marginRight: Spacing.xs,
   } as any,
   rowValue: {
     ...Typography.bodySemiBold,
