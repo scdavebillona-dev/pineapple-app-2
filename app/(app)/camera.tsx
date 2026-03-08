@@ -253,7 +253,7 @@ export default function CameraScreen() {
             <View style={styles.resultRows}>
               <View style={styles.resultRow}>
                 <Text style={styles.rowLabel}>Variety</Text>
-                <Text style={styles.rowValue}>{currentResult?.label ?? '—'}</Text>
+                <Text style={styles.rowValue}>{currentResult?.label?.replace('Smooth Cayenne', 'Smooth') ?? '—'}</Text>
               </View>
               <View style={styles.resultDivider} />
               <View style={styles.resultRow}>
@@ -471,9 +471,9 @@ const createCameraStyles = (colors: typeof Colors) => StyleSheet.create({
   },
   resultRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: Spacing.md,
+    gap: Spacing.lg,
   },
   resultDivider: {
     height: 1,
@@ -482,14 +482,14 @@ const createCameraStyles = (colors: typeof Colors) => StyleSheet.create({
   rowLabel: {
     ...Typography.bodyMedium,
     color: colors.textMuted,
+    minWidth: 100,
   } as any,
   rowValue: {
     ...Typography.bodySemiBold,
     color: colors.text,
+    flex: 1,
   } as any,
   timestampValue: {
-    maxWidth: '55%',
-    textAlign: 'right',
     fontSize: 13,
   },
   resultActions: {
@@ -520,7 +520,7 @@ const createCameraStyles = (colors: typeof Colors) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.sm,
-    backgroundColor: colors.error,
+    backgroundColor: '#DC2626',
     paddingVertical: Spacing.md,
     borderRadius: BorderRadius.lg,
   },

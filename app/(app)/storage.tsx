@@ -54,6 +54,7 @@ export default function StorageScreen() {
   const [selectedItem, setSelectedItem] = useState<ScanItem | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
+  const [showDeletedModal, setShowDeletedModal] = useState(false);
 
   // Reload whenever the tab gets focus
   useFocusEffect(
@@ -141,6 +142,12 @@ export default function StorageScreen() {
             setItems(newItems);
             setModalVisible(false);
             setSelectedItem(null);
+            
+            // Show deleted confirmation
+            setShowDeletedModal(true);
+            setTimeout(() => {
+              setShowDeletedModal(false);
+            }, 1500);
           }
         }
       ]
@@ -272,7 +279,7 @@ export default function StorageScreen() {
                 <View style={styles.resultRows}>
                   <View style={styles.resultRow}>
                     <Text style={styles.rowLabel}>Variety</Text>
-                    <Text style={styles.rowValue}>{selectedItem.name}</Text>
+                    <Text style={styles.rowValue}>{selectedItem.name?.replace('Smooth Cayenne', 'Smooth')}</Text>
                   </View>
                   <View style={styles.resultDivider} />
                   <View style={styles.resultRow}>
@@ -334,6 +341,20 @@ export default function StorageScreen() {
             )}
           </TouchableOpacity>
         </TouchableOpacity>
+      </Modal>
+
+      {/* Deleted Confirmation Modal */}
+      <Modal
+        visible={showDeletedModal}
+        transparent={true}
+        animationType="fade"
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.deletedBox}>
+            <MaterialIcons name="check-circle" size={56} color="#DC2626" />
+            <Text style={styles.deletedText}>Deleted!</Text>
+          </View>
+        </View>
       </Modal>
 
     </ThemedView>
@@ -439,9 +460,9 @@ const createStorageStyles = (colors: typeof Colors) => StyleSheet.create({
   },
   resultRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: Spacing.md,
+    gap: Spacing.lg,
   },
   resultDivider: {
     height: 1,
@@ -450,14 +471,14 @@ const createStorageStyles = (colors: typeof Colors) => StyleSheet.create({
   rowLabel: {
     ...Typography.bodyMedium,
     color: colors.textMuted,
+    minWidth: 100,
   } as any,
   rowValue: {
     ...Typography.bodySemiBold,
     color: colors.text,
+    flex: 1,
   } as any,
   timestampValue: {
-    maxWidth: '55%',
-    textAlign: 'right',
     fontSize: 13,
   },
   resultActions: {
@@ -498,5 +519,22 @@ const createStorageStyles = (colors: typeof Colors) => StyleSheet.create({
     fontSize: 15,
     fontFamily: 'Montserrat_600SemiBold',
   },
+  deletedBox: {
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.xxxl,
+    alignItems: 'center',
+    gap: Spacing.md,
+    ...Shadows.md,
+    shadowColor: colors.primaryDark,
+    shadowOpacity: 0.12,
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  deletedText: {
+    ...Typography.h3,
+    color: colors.text,
+  } as any,
 });
 

@@ -44,7 +44,9 @@ export function ItemCard({ item, onPress, onDelete, style }: ItemCardProps) {
       {/* Content */}
       <View style={styles.content}>
         <View style={styles.header}>
-          <Text style={[styles.label, { color: colors.text }]} numberOfLines={1}>{item.label}</Text>
+          <Text style={[styles.label, { color: colors.text }]} numberOfLines={1}>
+            {item.label?.replace('Smooth Cayenne', 'Smooth') || item.label}
+          </Text>
           <View style={styles.badges}>
             {item.quality && (
               <QualityBadge quality={item.quality} size="sm" />
@@ -113,7 +115,9 @@ export function ItemCardGrid({ item, onPress, style }: ItemCardGridProps) {
 
       {/* Info */}
       <View style={styles.gridContent}>
-        <Text style={[styles.gridLabel, { color: colors.text }]}>{item.label}</Text>
+        <Text style={[styles.gridLabel, { color: colors.text }]}>
+          {item.label?.replace('Smooth Cayenne', 'Smooth') || item.label}
+        </Text>
         <Text style={[styles.gridTimestamp, { color: colors.textMuted }]}>{formatRelativeTime(item.timestamp)}</Text>
       </View>
     </TouchableOpacity>
