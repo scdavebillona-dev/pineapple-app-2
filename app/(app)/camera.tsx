@@ -1,14 +1,16 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { useCameraPermissions } from 'expo-camera';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
     Animated,
     Image,
     Modal,
+    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -46,6 +48,7 @@ function formatTimestamp(iso: string): string {
 
 export default function CameraScreen() {
   const colors = useColors();
+  const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
   const [isProcessing, setIsProcessing] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
@@ -54,6 +57,8 @@ export default function CameraScreen() {
   const [model, setModel] = useState<any>(null);
   const [showResultModal, setShowResultModal] = useState(false);
   const [showSavedModal, setShowSavedModal] = useState(false);
+  const [showModelInfoModal, setShowModelInfoModal] = useState(false);
+  const [showGuideModal, setShowGuideModal] = useState(false);
 
   const savedScale = useRef(new Animated.Value(0)).current;
   const savedOpacity = useRef(new Animated.Value(0)).current;
@@ -75,6 +80,27 @@ export default function CameraScreen() {
       }
     })();
   }, [cameraPermission, requestCameraPermission]);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerLeft: () => (
+        <TouchableOpacity
+          onPress={() => setShowModelInfoModal(true)}
+          style={{ marginLeft: 16, padding: 8 }}
+        >
+          <MaterialIcons name="memory" size={22} color={colors.primary} />
+        </TouchableOpacity>
+      ),
+      headerRight: () => (
+        <TouchableOpacity
+          onPress={() => setShowGuideModal(true)}
+          style={{ marginRight: 16, padding: 8 }}
+        >
+          <MaterialIcons name="menu-book" size={22} color={colors.primary} />
+        </TouchableOpacity>
+      ),
+    });
+  }, [colors.primary, navigation]);
 
   const handleCapture = async () => {
     try {
@@ -244,6 +270,60 @@ export default function CameraScreen() {
         </View>
       </Modal>
 
+      {/* Model Info Modal (stays in Camera screen) */}
+      <Modal visible={showModelInfoModal} transparent animationType="fade" onRequestClose={() => setShowModelInfoModal(false)}>
+        <View style={styles.modelOverlay}>
+          <View style={styles.modelSheet}>
+            <TouchableOpacity
+              style={styles.modelCloseIconBtn}
+              onPress={() => setShowModelInfoModal(false)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <MaterialIcons name="close" size={22} color={colors.error} />
+            </TouchableOpacity>
+
+            <Text style={styles.resultTitle}>Computer Vision Model</Text>
+
+            <View style={styles.resultRows}>
+              <View style={styles.resultRow}>
+                <Text style={styles.rowLabel}>Model :</Text>
+                <Text style={styles.rowValue}>YOLO26</Text>
+              </View>
+              <View style={styles.resultDivider} />
+
+              <View style={styles.resultRow}>
+                <Text style={styles.rowLabel}>Variety Model Accuracy :</Text>
+                <Text style={styles.rowValue}>90%</Text>
+              </View>
+              <View style={styles.resultDivider} />
+
+              <View style={styles.resultRow}>
+                <Text style={styles.rowLabel}>Maturity Smooth Accuracy :</Text>
+                <Text style={styles.rowValue}>90%</Text>
+              </View>
+              <View style={styles.resultDivider} />
+
+              <View style={styles.resultRow}>
+                <Text style={styles.rowLabel}>Maturity Queen Accuracy :</Text>
+                <Text style={styles.rowValue}>90%</Text>
+              </View>
+              <View style={styles.resultDivider} />
+
+              <View style={styles.resultRow}>
+                <Text style={styles.rowLabel}>Quality Smooth Accuracy :</Text>
+                <Text style={styles.rowValue}>90%</Text>
+              </View>
+              <View style={styles.resultDivider} />
+
+              <View style={styles.resultRow}>
+                <Text style={styles.rowLabel}>Quality Queen Accuracy :</Text>
+                <Text style={styles.rowValue}>90%</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* Result Modal */}
       <Modal visible={showResultModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
@@ -303,6 +383,114 @@ export default function CameraScreen() {
                 <Text style={styles.saveBtnText}>Save</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Grading Standards Modal (book icon) */}
+      <Modal visible={showGuideModal} transparent animationType="fade" onRequestClose={() => setShowGuideModal(false)}>
+        <View style={styles.modelOverlay}>
+          <View style={styles.guideSheet}>
+            <TouchableOpacity
+              style={styles.modelCloseIconBtn}
+              onPress={() => setShowGuideModal(false)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <MaterialIcons name="close" size={22} color={colors.error} />
+            </TouchableOpacity>
+
+            <Text style={styles.resultTitle}>Pineapple Grading Standard</Text>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.guideContent}>
+              <Text style={styles.guideSubTitle}>Variety Classification</Text>
+
+              <View style={styles.tableHeader}>
+                <Text style={[styles.tableHeaderText, styles.colVariety]}>Variety</Text>
+                <Text style={[styles.tableHeaderText, styles.colDescription]}>Description</Text>
+              </View>
+              <View style={styles.tableRow}>
+                <Text style={[styles.tableCellText, styles.colVariety]}>Smooth Cayenne</Text>
+                <Text style={[styles.tableCellText, styles.colDescription]}>Large fruit, cylindrical shape, smooth eyes, commonly used for processing</Text>
+              </View>
+              <View style={styles.tableRow}>
+                <Text style={[styles.tableCellText, styles.colVariety]}>Queen</Text>
+                <Text style={[styles.tableCellText, styles.colDescription]}>Smaller fruit, conical shape, deep eyes, sweeter taste, often for fresh consumption</Text>
+              </View>
+
+              <Text style={styles.guideSubTitle}>Maturity Index</Text>
+              <Text style={styles.guideBodyText}>Based on the percentage of yellow/orange color development on the pineapple skin.</Text>
+
+              <Text style={styles.guideMinorTitle}>Smooth Cayenne</Text>
+              <View style={styles.tableHeaderThree}>
+                <Text style={[styles.tableHeaderText, styles.colIndex]}>Index</Text>
+                <Text style={[styles.tableHeaderText, styles.colMaturity]}>Maturity</Text>
+                <Text style={[styles.tableHeaderText, styles.colDescThree]}>Description</Text>
+              </View>
+              <View style={styles.tableRowThree}>
+                <Text style={[styles.tableCellText, styles.colIndex]}>1-2</Text>
+                <Text style={[styles.tableCellText, styles.colMaturity]}>Unripe</Text>
+                <Text style={[styles.tableCellText, styles.colDescThree]}>Mostly green skin, not ready for consumption</Text>
+              </View>
+              <View style={styles.tableRowThree}>
+                <Text style={[styles.tableCellText, styles.colIndex]}>3-4</Text>
+                <Text style={[styles.tableCellText, styles.colMaturity]}>Ripe</Text>
+                <Text style={[styles.tableCellText, styles.colDescThree]}>Partial yellowing, suitable for harvest and market</Text>
+              </View>
+              <View style={styles.tableRowThree}>
+                <Text style={[styles.tableCellText, styles.colIndex]}>5-6</Text>
+                <Text style={[styles.tableCellText, styles.colMaturity]}>Overripe</Text>
+                <Text style={[styles.tableCellText, styles.colDescThree]}>Mostly yellow/orange, softer texture, shorter shelf life</Text>
+              </View>
+
+              <Text style={styles.guideMinorTitle}>Queen</Text>
+              <View style={styles.tableHeaderThree}>
+                <Text style={[styles.tableHeaderText, styles.colIndex]}>Index</Text>
+                <Text style={[styles.tableHeaderText, styles.colMaturity]}>Maturity</Text>
+                <Text style={[styles.tableHeaderText, styles.colDescThree]}>Description</Text>
+              </View>
+              <View style={styles.tableRowThree}>
+                <Text style={[styles.tableCellText, styles.colIndex]}>1-2</Text>
+                <Text style={[styles.tableCellText, styles.colMaturity]}>Unripe</Text>
+                <Text style={[styles.tableCellText, styles.colDescThree]}>Green skin, immature and firm</Text>
+              </View>
+              <View style={styles.tableRowThree}>
+                <Text style={[styles.tableCellText, styles.colIndex]}>3</Text>
+                <Text style={[styles.tableCellText, styles.colMaturity]}>Ripe</Text>
+                <Text style={[styles.tableCellText, styles.colDescThree]}>Balanced color development, best for consumption</Text>
+              </View>
+              <View style={styles.tableRowThree}>
+                <Text style={[styles.tableCellText, styles.colIndex]}>4-5</Text>
+                <Text style={[styles.tableCellText, styles.colMaturity]}>Overripe</Text>
+                <Text style={[styles.tableCellText, styles.colDescThree]}>Advanced yellowing, very sweet but perishable</Text>
+              </View>
+
+              <Text style={styles.guideSubTitle}>Quality Grade</Text>
+              <View style={styles.tableHeader}>
+                <Text style={[styles.tableHeaderText, styles.colVariety]}>Grade</Text>
+                <Text style={[styles.tableHeaderText, styles.colDescription]}>Description</Text>
+              </View>
+              <View style={styles.tableRow}>
+                <Text style={[styles.tableCellText, styles.colVariety]}>Extra Class</Text>
+                <Text style={[styles.tableCellText, styles.colDescription]}>Superior quality, well-formed, free from defects, premium market grade</Text>
+              </View>
+              <View style={styles.tableRow}>
+                <Text style={[styles.tableCellText, styles.colVariety]}>Class I</Text>
+                <Text style={[styles.tableCellText, styles.colDescription]}>Good quality, slight defects allowed, still visually acceptable</Text>
+              </View>
+              <View style={styles.tableRow}>
+                <Text style={[styles.tableCellText, styles.colVariety]}>Class II</Text>
+                <Text style={[styles.tableCellText, styles.colDescription]}>Acceptable quality, visible defects, suitable for general consumption</Text>
+              </View>
+
+              <Text style={styles.guideBodyText}>
+                This grading system follows standard pineapple classification based on variety, maturity index, and quality grade. Maturity is determined by external color development, while quality is evaluated based on physical appearance and defects.
+              </Text>
+              <Text style={styles.guideBodyText}>
+                These standards help identify the market suitability and overall condition of the fruit.
+              </Text>
+
+              <Text style={styles.guideFooter}>Based on Philippine National Standard (PNS) for Pineapple</Text>
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -425,6 +613,132 @@ const createCameraStyles = (colors: typeof Colors) => StyleSheet.create({
     alignItems: 'center',
     padding: Spacing.xl,
   },
+
+  modelOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.xl,
+  },
+  modelSheet: {
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.xl,
+    width: '100%',
+    ...Shadows.md,
+    shadowColor: colors.primaryDark,
+    shadowOpacity: 0.12,
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  guideSheet: {
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.xl,
+    width: '100%',
+    maxHeight: '86%',
+    ...Shadows.md,
+    shadowColor: colors.primaryDark,
+    shadowOpacity: 0.12,
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  modelCloseIconBtn: {
+    position: 'absolute',
+    top: Spacing.md,
+    right: Spacing.md,
+    zIndex: 2,
+    padding: 4,
+  },
+  guideContent: {
+    paddingBottom: Spacing.md,
+    gap: Spacing.md,
+  },
+  guideSubTitle: {
+    ...Typography.bodySemiBold,
+    color: colors.text,
+    fontSize: 16,
+    marginTop: Spacing.xs,
+  } as any,
+  guideMinorTitle: {
+    ...Typography.bodySemiBold,
+    color: colors.text,
+    marginTop: Spacing.xs,
+  } as any,
+  guideBodyText: {
+    ...Typography.bodySmall,
+    color: colors.textSecondary,
+    lineHeight: 20,
+  } as any,
+  tableHeader: {
+    flexDirection: 'row',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: Spacing.sm,
+    gap: Spacing.sm,
+  },
+  tableHeaderThree: {
+    flexDirection: 'row',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: Spacing.sm,
+    gap: Spacing.sm,
+  },
+  tableRow: {
+    flexDirection: 'row',
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.border,
+    padding: Spacing.sm,
+    gap: Spacing.sm,
+  },
+  tableRowThree: {
+    flexDirection: 'row',
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.border,
+    padding: Spacing.sm,
+    gap: Spacing.sm,
+  },
+  tableHeaderText: {
+    ...Typography.bodySemiBold,
+    color: colors.text,
+    fontSize: 12,
+  } as any,
+  tableCellText: {
+    ...Typography.bodySmall,
+    color: colors.textSecondary,
+    fontSize: 12,
+    lineHeight: 18,
+  } as any,
+  colVariety: {
+    flex: 1,
+  },
+  colDescription: {
+    flex: 2.2,
+  },
+  colIndex: {
+    flex: 0.8,
+  },
+  colMaturity: {
+    flex: 1.1,
+  },
+  colDescThree: {
+    flex: 2.1,
+  },
+  guideFooter: {
+    ...Typography.bodySmall,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginTop: Spacing.md,
+  } as any,
 
   scanningBox: {
     backgroundColor: colors.surfaceElevated,

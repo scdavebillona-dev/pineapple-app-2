@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="192" height="192" viewBox="0 0 192 192" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="192" height="192" fill="#FFFFFF"/>
+  
+  <!-- Circle background (muted) -->
+  <circle cx="96" cy="96" r="67.19999999999999" fill="rgba(234, 88, 12, 0.15)"/>
+  
+  <!-- Circle border -->
+  <circle cx="96" cy="96" r="67.19999999999999" fill="none" stroke="#EA580C" stroke-width="7.68"/>
+  
+  <!-- Left grass blade -->
+  <g transform="translate(80.64, 96) rotate(-30)">
+    <rect x="-3.84" y="0" width="7.68" height="23.04" fill="#EA580C" rx="3.84"/>
+  </g>
+  
+  <!-- Center grass blade -->
+  <rect x="92.16" y="82.176" width="7.68" height="23.04" fill="#EA580C" rx="3.84"/>
+  
+  <!-- Right grass blade -->
+  <g transform="translate(111.36, 96) rotate(30)">
+    <rect x="-3.84" y="0" width="7.68" height="23.04" fill="#EA580C" rx="3.84"/>
+  </g>
+</svg>

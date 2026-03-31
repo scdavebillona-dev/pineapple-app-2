@@ -2,13 +2,14 @@
  * PineAI System - Professional Dashboard
  */
 
+import { MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, Modal, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { Card, EmptyState, ItemCard, StatCard } from '@/components/ui';
-import { Colors, Spacing, Typography } from '@/constants/theme';
+import { BorderRadius, Colors, Shadows, Spacing, Typography } from '@/constants/theme';
 import { useColors } from '@/hooks/use-colors';
 import { ScanResult, ScanStats } from '@/types';
 import { calculateStats } from '@/utils/helpers';
@@ -24,6 +25,9 @@ export default function HomeScreen() {
     avgConfidence: 0,
   });
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedScan, setSelectedScan] = useState<ScanResult | null>(null);
+  const [detailsVisible, setDetailsVisible] = useState(false);
+  const [showDeletedModal, setShowDeletedModal] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -67,7 +71,34 @@ export default function HomeScreen() {
     setRefreshing(false);
   }, [loadData]);
 
-  const recentScans = scans.slice(0, 5);
+  const recentScans = scans.slice(0, 4);
+
+  const openDetails = (scan: ScanResult) => {
+    setSelectedScan(scan);
+    setDetailsVisible(true);
+  };
+
+  const handleDelete = async (id: string, timestamp?: string) => {
+    try {
+      const existingScans = await AsyncStorage.getItem('scanHistory');
+      if (!existingScans) return;
+
+      const scansData = JSON.parse(existingScans).filter((scan: any) => {
+        if (scan.id && scan.id === id) return false;
+        if (!scan.id && timestamp && scan.timestamp === timestamp) return false;
+        return true;
+      });
+
+      await AsyncStorage.setItem('scanHistory', JSON.stringify(scansData));
+      setScans(prev => prev.filter(scan => scan.id !== id));
+      setDetailsVisible(false);
+      setSelectedScan(null);
+      setShowDeletedModal(true);
+      setTimeout(() => setShowDeletedModal(false), 1500);
+    } catch (error) {
+      console.error('Failed to delete scan:', error);
+    }
+  };
 
   const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -121,7 +152,7 @@ export default function HomeScreen() {
             <View key={index}>
               <ItemCard
                 item={scan}
-                onPress={() => router.push('/(app)/storage')}
+                onPress={() => openDetails(scan)}
                 style={styles.recentItem}
               />
               {index < recentScans.length - 1 && <View style={styles.divider} />}
@@ -141,6 +172,133 @@ export default function HomeScreen() {
       )}
 
       <View style={styles.bottomSpace} />
+
+      <Modal
+        visible={detailsVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setDetailsVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setDetailsVisible(false)}
+        >
+          <TouchableOpacity activeOpacity={1} style={styles.modalContent} onPress={() => {}}>
+            <Text style={styles.modalTitle}>Scan Details</Text>
+
+            {selectedScan && (
+              <>
+                {selectedScan.image ? (
+                  <Image source={{ uri: selectedScan.image }} style={styles.modalImage} resizeMode="cover" />
+                ) : (
+                  <View style={styles.noImageContainer}>
+                    <MaterialIcons name="image-not-supported" size={36} color={colors.textMuted} />
+                  </View>
+                )}
+
+                <View style={styles.resultRows}>
+                  <View style={styles.resultRow}>
+                    <Text style={styles.rowLabel}>Variety :</Text>
+                    <Text style={styles.rowValue}>
+                      {selectedScan.label === 'Smooth' ? 'Smooth Cayenne' : selectedScan.label}
+                    </Text>
+                  </View>
+                  <View style={styles.resultDivider} />
+                  <View style={styles.resultRow}>
+                    <Text style={styles.rowLabel}>Class :</Text>
+                    <Text style={styles.rowValue}>{selectedScan.quality || 'Unknown'}</Text>
+                  </View>
+                  <View style={styles.resultDivider} />
+                  <View style={styles.resultRow}>
+                    <Text style={styles.rowLabel}>Maturity :</Text>
+                    <Text style={styles.rowValue}>{selectedScan.maturity || '—'}</Text>
+                  </View>
+                  <View style={styles.resultDivider} />
+                  <View style={styles.resultRow}>
+                    <Text style={styles.rowLabel}>Confidence Level :</Text>
+                    <TouchableOpacity
+                      onPress={() => {
+                        if (!selectedScan) return;
+                        const varConf = (selectedScan.confidence * 100).toFixed(1) + '%';
+                        const clsConf = selectedScan.qualityConfidence
+                          ? (selectedScan.qualityConfidence * 100).toFixed(1) + '%'
+                          : 'N/A';
+                        const matConf = selectedScan.maturityConfidence
+                          ? (selectedScan.maturityConfidence * 100).toFixed(1) + '%'
+                          : 'N/A';
+                        Alert.alert('Confidence Details', `Variety: ${varConf}\nClass: ${clsConf}\nMaturity: ${matConf}`);
+                      }}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <MaterialIcons name="visibility" size={20} color={colors.primary} />
+                    </TouchableOpacity>
+                  </View>
+                  <View style={styles.resultDivider} />
+                  <View style={styles.resultRow}>
+                    <Text style={styles.rowLabel}>Timestamp :</Text>
+                    <Text style={[styles.rowValue, styles.timestampValue]}>
+                      {new Date(selectedScan.timestamp).toLocaleString('en-US', {
+                        month: 'long',
+                        day: 'numeric',
+                        year: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true,
+                      })}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.resultActions}>
+                  <TouchableOpacity
+                    style={styles.closeBtn}
+                    onPress={() => setDetailsVisible(false)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.closeBtnText}>Close</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.deleteBtn}
+                    onPress={() => {
+                      if (!selectedScan) return;
+                      Alert.alert(
+                        'Confirm Deletion',
+                        'Are you sure you want to delete, deleting can cause permanent delete',
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          {
+                            text: 'Delete',
+                            style: 'destructive',
+                            onPress: () => handleDelete(selectedScan.id, selectedScan.timestamp),
+                          },
+                        ]
+                      );
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <MaterialIcons name="delete-outline" size={18} color="#fff" />
+                    <Text style={styles.deleteBtnText}>Delete</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      <Modal
+        visible={showDeletedModal}
+        transparent={true}
+        animationType="fade"
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.deletedBox}>
+            <MaterialIcons name="check-circle" size={56} color="#DC2626" />
+            <Text style={styles.deletedText}>Deleted!</Text>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -198,6 +356,132 @@ const createStyles = (colors: typeof Colors) => StyleSheet.create({
   
   bottomSpace: {
     height: Spacing.xxxxl,
+  },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.xl,
+  },
+  modalContent: {
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.xl,
+    width: '100%',
+    ...Shadows.md,
+    shadowColor: colors.primaryDark,
+    shadowOpacity: 0.12,
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  modalTitle: {
+    ...Typography.h3,
+    color: colors.text,
+    marginBottom: Spacing.lg,
+  },
+  modalImage: {
+    width: '100%',
+    aspectRatio: 1,
+    borderRadius: BorderRadius.lg,
+    marginBottom: Spacing.lg,
+    backgroundColor: colors.surface,
+  },
+  noImageContainer: {
+    width: '100%',
+    aspectRatio: 2,
+    borderRadius: BorderRadius.lg,
+    marginBottom: Spacing.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderStyle: 'dashed',
+  },
+  resultRows: {
+    gap: 0,
+    marginBottom: Spacing.xl,
+  },
+  resultRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: Spacing.md,
+    gap: Spacing.xs,
+  },
+  resultDivider: {
+    height: 1,
+    backgroundColor: colors.borderLight,
+  },
+  rowLabel: {
+    ...Typography.bodyMedium,
+    color: colors.textMuted,
+    marginRight: Spacing.xs,
+  },
+  rowValue: {
+    ...Typography.bodySemiBold,
+    color: colors.text,
+    flex: 1,
+  },
+  timestampValue: {
+    fontSize: 13,
+  },
+  resultActions: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+  },
+  closeBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    backgroundColor: colors.surface,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  closeBtnText: {
+    fontSize: 15,
+    fontWeight: '600',
+    fontFamily: 'Montserrat_600SemiBold',
+    color: colors.textSecondary,
+  },
+  deleteBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    backgroundColor: '#DC2626',
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.lg,
+  },
+  deleteBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
+    fontFamily: 'Montserrat_600SemiBold',
+  },
+  deletedBox: {
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: 20,
+    paddingVertical: Spacing.xxl,
+    paddingHorizontal: Spacing.xxxl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  deletedText: {
+    marginTop: Spacing.md,
+    fontSize: 18,
+    fontWeight: '700',
+    fontFamily: 'Montserrat_700Bold',
+    color: '#DC2626',
   },
 });
 

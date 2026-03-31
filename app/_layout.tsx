@@ -9,7 +9,7 @@ import {
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import 'react-native-reanimated';
 
 import { SplashScreen } from '@/components/splash-screen';
@@ -22,9 +22,10 @@ export const unstable_settings = {
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
-  const { isSignedIn, isLoading } = useAuth();
+  const { isLoading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  const [splashDelayDone, setSplashDelayDone] = useState(false);
   const [fontsLoaded] = useFonts({
     Montserrat_400Regular,
     Montserrat_500Medium,
@@ -34,16 +35,19 @@ function RootLayoutNav() {
   });
 
   useEffect(() => {
+    const timer = setTimeout(() => setSplashDelayDone(true), 3000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
     if (isLoading || !fontsLoaded) return;
     const inAuthGroup = segments[0] === '(auth)';
-    if (!isSignedIn && !inAuthGroup) {
-      router.replace('/(auth)/login');
-    } else if (isSignedIn && inAuthGroup) {
+    if (inAuthGroup) {
       router.replace('/(app)/home');
     }
-  }, [isSignedIn, isLoading, fontsLoaded, segments]);
+  }, [isLoading, fontsLoaded, segments, router]);
 
-  if (isLoading || !fontsLoaded) {
+  if (!splashDelayDone || isLoading || !fontsLoaded) {
     return <SplashScreen />;
   }
 
@@ -52,7 +56,7 @@ function RootLayoutNav() {
       <Stack>
         <Stack.Screen name="(app)" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+        <Stack.Screen name="modal" options={{ presentation: 'modal', headerShown: false }} />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>

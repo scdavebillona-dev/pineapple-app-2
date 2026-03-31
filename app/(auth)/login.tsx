@@ -109,33 +109,9 @@ export default function LoginScreen() {
           
           {/* Logo Section */}
           <View style={styles.logoSection}>
-            {/* Pineapple Icon */}
-            <View style={styles.pineappleWrapper}>
-              {/* Crown leaves */}
-              <View style={styles.crownRow}>
-                <View style={[styles.leaf, styles.leafLeft]} />
-                <View style={[styles.leaf, styles.leafCenter]} />
-                <View style={[styles.leaf, styles.leafRight]} />
-              </View>
-              {/* Body */}
-              <View style={[styles.pineappleBody, { backgroundColor: colors.primary, shadowColor: colors.primary }]}>
-                {/* Diamond grid texture */}
-                <View style={styles.gridRow}>
-                  {[0,1,2].map(i => (
-                    <View key={i} style={[styles.diamond, { borderColor: 'rgba(255,255,255,0.25)' }]} />
-                  ))}
-                </View>
-                <View style={[styles.gridRow, { marginTop: 6 }]}>
-                  {[0,1].map(i => (
-                    <View key={i} style={[styles.diamond, { borderColor: 'rgba(255,255,255,0.25)', marginHorizontal: 7 }]} />
-                  ))}
-                </View>
-                <View style={[styles.gridRow, { marginTop: 6 }]}>
-                  {[0,1,2].map(i => (
-                    <View key={i} style={[styles.diamond, { borderColor: 'rgba(255,255,255,0.25)' }]} />
-                  ))}
-                </View>
-              </View>
+            {/* Logo Circle */}
+            <View style={[styles.logoCircle, { backgroundColor: colors.primaryMuted, borderColor: colors.primary }]}>
+              <MaterialIcons name="grass" size={56} color={colors.primary} />
             </View>
             <Text style={[styles.appName, { color: colors.primary }]}>PineAI</Text>
             <Text style={[styles.tagline, { color: colors.textMuted }]}>Pineapple Classification System</Text>
@@ -223,57 +199,14 @@ const createLoginStyles = (colors: typeof Colors) => StyleSheet.create({
     alignItems: 'center',
     marginBottom: Spacing.xxxl,
   },
-  pineappleWrapper: {
-    alignItems: 'center',
-    marginBottom: Spacing.md,
-  },
-  crownRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    marginBottom: -2,
-    zIndex: 1,
-  },
-  leaf: {
-    width: 10,
-    height: 22,
-    borderRadius: 50,
-    backgroundColor: '#4CAF50',
-  },
-  leafLeft: {
-    transform: [{ rotate: '-30deg' }],
-    marginRight: -2,
-  },
-  leafCenter: {
-    width: 12,
-    height: 28,
-    backgroundColor: '#388E3C',
-    marginBottom: 2,
-  },
-  leafRight: {
-    transform: [{ rotate: '30deg' }],
-    marginLeft: -2,
-  },
-  pineappleBody: {
-    width: 80,
-    height: 88,
-    borderRadius: 40,
+  logoCircle: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 8,
-  },
-  gridRow: {
-    flexDirection: 'row',
-  },
-  diamond: {
-    width: 16,
-    height: 16,
-    borderWidth: 1.5,
-    borderRadius: 3,
-    marginHorizontal: 3,
-    transform: [{ rotate: '45deg' }],
+    borderWidth: 3,
+    marginBottom: Spacing.md,
   },
   appName: {
     ...Typography.h2,

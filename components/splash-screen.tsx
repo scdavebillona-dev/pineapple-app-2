@@ -3,7 +3,6 @@
  * Displayed during app initialization
  */
 
-import { MaterialIcons } from '@expo/vector-icons';
 import { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
 
@@ -68,13 +67,6 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
           },
         ]}
       >
-        {/* Logo Icon */}
-        <View style={styles.logoContainer}>
-          <View style={styles.logoCircle}>
-            <MaterialIcons name="grass" size={56} color={Colors.primary} />
-          </View>
-        </View>
-
         {/* Brand Text */}
         <View style={styles.brandContainer}>
           <Animated.Text style={styles.brandName}>PineAI</Animated.Text>
@@ -138,22 +130,9 @@ const styles = StyleSheet.create({
   content: {
     alignItems: 'center',
   },
-  logoContainer: {
-    marginBottom: Spacing.xxl,
-  },
-  logoCircle: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: Colors.primaryMuted,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 3,
-    borderColor: Colors.primary,
-  },
   brandContainer: {
     alignItems: 'center',
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.md,
   },
   brandName: {
     ...Typography.h1,
@@ -172,7 +151,7 @@ const styles = StyleSheet.create({
     ...Typography.bodySmall,
     color: Colors.textMuted,
     textAlign: 'center',
-    marginBottom: Spacing.xxxxl,
+    marginBottom: Spacing.xxxl,
   },
   loadingContainer: {
     flexDirection: 'row',

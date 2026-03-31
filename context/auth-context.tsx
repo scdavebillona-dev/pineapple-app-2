@@ -4,12 +4,14 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
 export interface User {
   username: string;
   email: string;
+  createdAt?: string;
 }
 
 interface StoredUser {
   username: string;
   email: string;
   password: string;
+  createdAt: string;
 }
 
 interface AuthContextType {
@@ -73,6 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const loggedInUser: User = {
         username: foundUser.username,
         email: foundUser.email,
+        createdAt: foundUser.createdAt,
       };
 
       setIsSignedIn(true);
@@ -121,7 +124,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         // Add new user
-        const newUser: StoredUser = { username, email, password };
+        const newUser: StoredUser = { username, email, password, createdAt: new Date().toISOString() };
         users.push(newUser);
 
         // Save to storage

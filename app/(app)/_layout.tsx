@@ -69,7 +69,7 @@ export default function AppLayout() {
           } else if (route.name === 'storage') {
             iconName = 'search';
           } else if (route.name === 'profile') {
-            iconName = 'person';
+            iconName = 'info';
           }
 
           return (
@@ -120,7 +120,19 @@ export default function AppLayout() {
         name="camera"
         component={CameraScreen}
         options={{
-          headerShown: false,
+          headerShown: true,
+          headerTitle: () => (
+            <Text style={{ fontFamily: 'Montserrat_700Bold', fontWeight: '700', fontSize: 19, color: colors.primary, letterSpacing: 0.3 }}>
+              Scan
+            </Text>
+          ),
+          headerStyle: {
+            backgroundColor: colors.surface,
+            elevation: 0,
+            shadowOpacity: 0,
+            borderBottomWidth: 1,
+            borderBottomColor: isDark ? colors.border : '#F3F4F6',
+          },
           tabBarLabel: 'Camera',
         }}
       />
@@ -136,8 +148,28 @@ export default function AppLayout() {
         name="profile"
         component={ProfileScreen}
         options={{
-          headerShown: false,
-          tabBarLabel: 'Account',
+          headerShown: true,
+          headerLeft: () => (
+            <TouchableOpacity
+              onPress={() => router.push('/(app)/home')}
+              style={{ marginLeft: 16, padding: 8 }}
+            >
+              <MaterialIcons name="chevron-left" size={24} color={colors.primary} />
+            </TouchableOpacity>
+          ),
+          headerTitle: () => (
+            <Text style={{ fontFamily: 'Montserrat_700Bold', fontWeight: '700', fontSize: 19, color: colors.primary, letterSpacing: 0.3 }}>
+              About Us
+            </Text>
+          ),
+          headerStyle: {
+            backgroundColor: colors.surface,
+            elevation: 0,
+            shadowOpacity: 0,
+            borderBottomWidth: 1,
+            borderBottomColor: isDark ? colors.border : '#F3F4F6',
+          },
+          tabBarLabel: 'Info',
         }}
       />
     </Tab.Navigator>

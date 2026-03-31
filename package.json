@@ -8,7 +8,10 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "build:apk": "eas build --platform android --profile apk",
+    "build:preview": "eas build --platform android --profile preview",
+    "build:production": "eas build --platform android --profile production"
   },
   "dependencies": {
     "@expo-google-fonts/montserrat": "^0.4.2",
