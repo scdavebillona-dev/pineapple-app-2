@@ -15,17 +15,14 @@ import 'react-native-reanimated';
 import { SplashScreen } from '@/components/splash-screen';
 import { AuthProvider, useAuth } from '@/context/auth-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-
-export const unstable_settings = {
-  anchor: '(app)',
-};
+import * as InferenceService from '@/services/ml-inference';
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
   const { isLoading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
-  const [splashDelayDone, setSplashDelayDone] = useState(false);
+  const [modelsReady, setModelsReady] = useState(false);
   const [fontsLoaded] = useFonts({
     Montserrat_400Regular,
     Montserrat_500Medium,
@@ -35,8 +32,23 @@ function RootLayoutNav() {
   });
 
   useEffect(() => {
-    const timer = setTimeout(() => setSplashDelayDone(true), 3000);
-    return () => clearTimeout(timer);
+    let isMounted = true;
+
+    (async () => {
+      try {
+        await InferenceService.preloadModels();
+      } catch (error) {
+        console.error('Failed to preload inference models:', error);
+      } finally {
+        if (isMounted) {
+          setModelsReady(true);
+        }
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -47,14 +59,13 @@ function RootLayoutNav() {
     }
   }, [isLoading, fontsLoaded, segments, router]);
 
-  if (!splashDelayDone || isLoading || !fontsLoaded) {
+  if (isLoading || !fontsLoaded || !modelsReady) {
     return <SplashScreen />;
   }
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(app)" options={{ headerShown: false }} />
+      <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', headerShown: false }} />
       </Stack>

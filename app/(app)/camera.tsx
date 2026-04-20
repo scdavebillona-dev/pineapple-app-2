@@ -1,7 +1,10 @@
+import { ThemedView } from '@/components/themed-view';
+import { BorderRadius, Colors, Shadows, Spacing, Typography } from '@/constants/theme';
+import { useColors } from '@/hooks/use-colors';
+import { StorageService } from '@/lib/storage';
+import * as InferenceService from '@/services/ml-inference';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { useCameraPermissions } from 'expo-camera';
-import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -17,18 +20,14 @@ import {
     View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-import { ThemedView } from '@/components/themed-view';
-import { BorderRadius, Colors, Shadows, Spacing, Typography } from '@/constants/theme';
-import { useColors } from '@/hooks/use-colors';
-import { StorageService } from '@/lib/storage';
-import * as InferenceService from '@/services/ml-inference';
+import { Camera as VisionCamera, useCameraDevice, useCameraFormat, useCameraPermission } from 'react-native-vision-camera';
 
 interface ScanResult {
   confidence: number;
   label: string;
   timestamp: string;
   image?: string;
+  boxes?: InferenceService.DetectionBox[];
   quality?: string;
   qualityConfidence?: number;
   maturity?: string;
@@ -46,6 +45,56 @@ function formatTimestamp(iso: string): string {
   });
 }
 
+async function resolveImageAspectRatio(
+  uri: string,
+  width?: number,
+  height?: number
+): Promise<number> {
+  if (typeof width === 'number' && typeof height === 'number' && width > 0 && height > 0) {
+    return width / height;
+  }
+
+  return new Promise((resolve) => {
+    Image.getSize(
+      uri,
+      (w, h) => resolve(w > 0 && h > 0 ? w / h : 1),
+      () => resolve(1)
+    );
+  });
+}
+
+function mapBoxToLetterbox(
+  box: InferenceService.DetectionBox,
+  aspectRatio: number
+): { leftPct: number; topPct: number; widthPct: number; heightPct: number } {
+  const safeAspect = aspectRatio > 0 ? aspectRatio : 1;
+
+  let displayWidth = 1;
+  let displayHeight = 1;
+  let offsetX = 0;
+  let offsetY = 0;
+
+  if (safeAspect >= 1) {
+    displayHeight = 1 / safeAspect;
+    offsetY = (1 - displayHeight) / 2;
+  } else {
+    displayWidth = safeAspect;
+    offsetX = (1 - displayWidth) / 2;
+  }
+
+  const left = offsetX + box.x * displayWidth;
+  const top = offsetY + box.y * displayHeight;
+  const width = box.width * displayWidth;
+  const height = box.height * displayHeight;
+
+  return {
+    leftPct: Math.max(0, Math.min(1, left)) * 100,
+    topPct: Math.max(0, Math.min(1, top)) * 100,
+    widthPct: Math.max(0, Math.min(1, width)) * 100,
+    heightPct: Math.max(0, Math.min(1, height)) * 100,
+  };
+}
+
 export default function CameraScreen() {
   const colors = useColors();
   const navigation = useNavigation<any>();
@@ -59,11 +108,18 @@ export default function CameraScreen() {
   const [showSavedModal, setShowSavedModal] = useState(false);
   const [showModelInfoModal, setShowModelInfoModal] = useState(false);
   const [showGuideModal, setShowGuideModal] = useState(false);
+  const [showLiveScanModal, setShowLiveScanModal] = useState(false);
+  const [imageAspectRatio, setImageAspectRatio] = useState(1);
 
   const savedScale = useRef(new Animated.Value(0)).current;
   const savedOpacity = useRef(new Animated.Value(0)).current;
-
-  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
+  const cameraRef = useRef<VisionCamera | null>(null);
+  const { hasPermission: hasCameraPermission, requestPermission: requestCameraPermission } = useCameraPermission();
+  const device = useCameraDevice('back');
+  const cameraFormat = useCameraFormat(device, [
+    { videoResolution: { width: 1280, height: 720 } },
+    { fps: 30 },
+  ]);
 
   useEffect(() => {
     (async () => {
@@ -72,14 +128,18 @@ export default function CameraScreen() {
         setModel(apiStatus);
         setModelLoaded(true);
       } catch (error) {
-        console.error('Failed to connect to Roboflow API:', error);
+        console.error('Failed to initialize inference service:', error);
+        Alert.alert(
+          'Service Unavailable',
+          'Could not initialize the inference service. Check network access and try again.'
+        );
       }
       await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!cameraPermission?.granted) {
+      if (!hasCameraPermission) {
         await requestCameraPermission();
       }
     })();
-  }, [cameraPermission, requestCameraPermission]);
+  }, [hasCameraPermission, requestCameraPermission]);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -103,22 +163,32 @@ export default function CameraScreen() {
   }, [colors.primary, navigation]);
 
   const handleCapture = async () => {
-    try {
-      const result = await ImagePicker.launchCameraAsync({
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 1,
-      });
-      if (!result.canceled && result.assets.length > 0) {
-        const manipResult = await ImageManipulator.manipulateAsync(
-          result.assets[0].uri,
-          [{ resize: { width: 640, height: 640 } }],
-          { compress: 1, format: ImageManipulator.SaveFormat.JPEG }
-        );
-        setCapturedImage(manipResult.uri);
-        setCurrentResult(null);
-        analyzeImage(manipResult.uri);
+    if (!hasCameraPermission) {
+      const granted = await requestCameraPermission();
+      if (!granted) {
+        Alert.alert('Permission Needed', 'Camera permission is required for capture.');
+        return;
       }
+    }
+
+    setShowLiveScanModal(true);
+  };
+
+  const closeLiveScan = () => {
+    setShowLiveScanModal(false);
+  };
+
+  const captureLiveFrame = async () => {
+    if (!cameraRef.current) return;
+    try {
+      const photo = await cameraRef.current.takePhoto({ enableShutterSound: false });
+      const rawUri = photo.path.startsWith('file://') ? photo.path : `file://${photo.path}`;
+      const ratio = await resolveImageAspectRatio(rawUri, photo.width, photo.height);
+      setImageAspectRatio(ratio);
+      setCapturedImage(rawUri);
+      setCurrentResult(null);
+      setShowLiveScanModal(false);
+      await analyzeImage(rawUri);
     } catch {
       Alert.alert('Error', 'Failed to capture photo');
     }
@@ -128,44 +198,72 @@ export default function CameraScreen() {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
+        allowsEditing: false,
         quality: 1,
       });
       if (!result.canceled && result.assets.length > 0) {
-        const manipResult = await ImageManipulator.manipulateAsync(
-          result.assets[0].uri,
-          [{ resize: { width: 640, height: 640 } }],
-          { compress: 1, format: ImageManipulator.SaveFormat.JPEG }
-        );
-        setCapturedImage(manipResult.uri);
+        const asset = result.assets[0];
+        const rawUri = asset.uri;
+        const ratio = await resolveImageAspectRatio(rawUri, asset.width, asset.height);
+        setImageAspectRatio(ratio);
+        setCapturedImage(rawUri);
         setCurrentResult(null);
-        analyzeImage(manipResult.uri);
+        await analyzeImage(rawUri);
       }
     } catch {
       Alert.alert('Error', 'Failed to pick image');
     }
   };
 
-  const analyzeImage = async (imageUri?: string) => {
+  async function analyzeImage(imageUri?: string) {
     const uri = imageUri ?? capturedImage;
-    if (!uri) return;
+    if (!uri) {
+      console.log('🔴 analyzeImage: No URI provided');
+      return;
+    }
+    console.log('🟢 analyzeImage: Starting analysis for', uri);
     setIsProcessing(true);
     try {
       if (!modelLoaded || !model) {
-        Alert.alert('API Not Ready', 'Waiting for Roboflow API connection.');
+        console.error('🔴 analyzeImage: Model not loaded', { modelLoaded, hasModel: !!model });
+        Alert.alert('Model Not Ready', 'Waiting for local variety model to load.');
         return;
       }
+      
+      console.log('🔷 analyzeImage: Calling InferenceService.performInference...');
       const inferenceResult = await InferenceService.performInference(uri, model);
+      console.log('🔷 analyzeImage: Inference result received:', {
+        hasPineapple: inferenceResult.detection.hasPineapple,
+        variety: inferenceResult.variety.label,
+        confidence: inferenceResult.variety.confidence,
+        boxCount: inferenceResult.boxes.length,
+        detectionError: inferenceResult.detection.error,
+      });
+      
+      // Show "No Pineapple detected" if no detection
       if (!inferenceResult.detection.hasPineapple) {
-        Alert.alert('No Pineapple', 'No pineapple detected. Please try another image.');
+        console.log('🟠 analyzeImage: No pineapple detected in image');
+        if (inferenceResult.detection.error) {
+          console.error('🔴 Detection error:', inferenceResult.detection.error);
+        }
+        setCurrentResult({
+          confidence: 0,
+          label: 'No Pineapple detected',
+          timestamp: new Date().toISOString(),
+          image: uri,
+          boxes: inferenceResult.boxes ?? [],
+        });
+        setShowResultModal(true);
         return;
       }
+      
+      console.log('🟢 analyzeImage: Pineapple detected! Processing results...');
       const result: ScanResult = {
         confidence: inferenceResult.variety.confidence,
         label: inferenceResult.variety.label,
         timestamp: new Date().toISOString(),
         image: uri,
+        boxes: inferenceResult.boxes ?? [],
         quality: inferenceResult.quality.label?.replace(/High Quality/i, 'Extra Class') || 'Extra Class',
         qualityConfidence: inferenceResult.quality.confidence,
         maturity: inferenceResult.maturity.label !== 'Unknown' ? inferenceResult.maturity.label : undefined,
@@ -173,15 +271,17 @@ export default function CameraScreen() {
       };
       setCurrentResult(result);
       setShowResultModal(true);
-    } catch {
-      Alert.alert('Error', 'Failed to analyze image');
+      console.log('🟢 analyzeImage: Result modal displayed');
+    } catch (error) {
+      console.error('🔴 analyzeImage: Exception caught:', error);
+      Alert.alert('Error', `Failed to analyze image: ${String(error)}`);
     } finally {
       setIsProcessing(false);
     }
-  };
+  }
 
   const saveScan = async () => {
-    if (!currentResult) return;
+    if (!currentResult || currentResult.label === 'No Pineapple detected') return;
     setShowResultModal(false);
     try {
       await StorageService.saveScan({
@@ -219,6 +319,7 @@ export default function CameraScreen() {
     setShowResultModal(false);
     setCapturedImage(null);
     setCurrentResult(null);
+    setImageAspectRatio(1);
   };
 
   const styles = useMemo(() => createCameraStyles(colors), [colors]);
@@ -264,8 +365,62 @@ export default function CameraScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.scanningBox}>
             <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={styles.scanningTitle}>Scanning...</Text>
-            <Text style={styles.scanningSubtitle}>Analyzing your pineapple image</Text>
+            <Text style={styles.scanningTitle}>Processing...</Text>
+            <Text style={styles.scanningSubtitle}>Analyzing your captured pineapple image</Text>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Capture Modal */}
+      <Modal
+        visible={showLiveScanModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={closeLiveScan}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.liveSheet}>
+            <Text style={styles.resultTitle}>Capture</Text>
+
+            <View style={styles.livePreviewArea}>
+              {device && hasCameraPermission ? (
+                <VisionCamera
+                  ref={cameraRef}
+                  style={styles.liveCamera}
+                  device={device}
+                  format={cameraFormat}
+                  fps={30}
+                  isActive={showLiveScanModal}
+                  photo={true}
+                  pixelFormat="yuv"
+                />
+              ) : (
+                <View style={styles.liveCameraFallback}>
+                  <Text style={styles.liveCameraFallbackText}>Camera not ready...</Text>
+                </View>
+              )}
+            </View>
+
+            <View style={styles.liveStatusRow}>
+              <Text style={styles.liveStatusText}>
+                Tap Capture to take a photo and analyze it.
+              </Text>
+            </View>
+
+            <View style={styles.resultActions}>
+              <TouchableOpacity style={styles.retakeBtn} onPress={closeLiveScan} activeOpacity={0.8}>
+                <MaterialIcons name="close" size={18} color={colors.textSecondary} />
+                <Text style={styles.retakeBtnText}>Close</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.saveBtn}
+                onPress={captureLiveFrame}
+                activeOpacity={0.8}
+              >
+                <MaterialIcons name="camera-alt" size={18} color="#fff" />
+                <Text style={styles.saveBtnText}>Capture</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -328,61 +483,102 @@ export default function CameraScreen() {
       <Modal visible={showResultModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.resultSheet}>
-            <Text style={styles.resultTitle}>Scan Result</Text>
+            {currentResult?.label === 'No Pineapple detected' ? (
+              <>
+                <Text style={[styles.resultTitle, { textAlign: 'center', marginBottom: 20 }]}>No Pineapple Detected</Text>
+                <View style={styles.resultActions}>
+                  <TouchableOpacity style={styles.retakeBtn} onPress={handleRetake} activeOpacity={0.8}>
+                    <MaterialIcons name="replay" size={18} color={colors.textSecondary} />
+                    <Text style={styles.retakeBtnText}>Retake</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            ) : (
+              <>
+                <Text style={styles.resultTitle}>Scan Result</Text>
 
-            <View style={styles.resultRows}>
-              <View style={styles.resultRow}>
-                <Text style={styles.rowLabel}>Variety :</Text>
-                <Text style={styles.rowValue}>
-                  {currentResult?.label === 'Smooth' ? 'Smooth Cayenne' : (currentResult?.label ?? '—')}
-                </Text>
-              </View>
-              <View style={styles.resultDivider} />
-              <View style={styles.resultRow}>
-                <Text style={styles.rowLabel}>Class :</Text>
-                <Text style={styles.rowValue}>{currentResult?.quality ?? '—'}</Text>
-              </View>
-              <View style={styles.resultDivider} />
-              <View style={styles.resultRow}>
-                <Text style={styles.rowLabel}>Maturity :</Text>
-                <Text style={styles.rowValue}>{currentResult?.maturity ?? '—'}</Text>
-              </View>
-              <View style={styles.resultDivider} />
-              <View style={styles.resultRow}>
-                <Text style={styles.rowLabel}>Confidence Level :</Text>
-                <TouchableOpacity onPress={() => {
-                  if (!currentResult) return;
-                  const varConf = (currentResult.confidence * 100).toFixed(1) + '%';
-                  const clsConf = currentResult.qualityConfidence
-                    ? (currentResult.qualityConfidence * 100).toFixed(1) + '%'
-                    : 'N/A';
-                  const matConf = currentResult.maturityConfidence
-                    ? (currentResult.maturityConfidence * 100).toFixed(1) + '%'
-                    : 'N/A';
-                  Alert.alert('Confidence Details', `Variety: ${varConf}\nClass: ${clsConf}\nMaturity: ${matConf}`);
-                }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <MaterialIcons name="visibility" size={20} color={colors.primary} />
-                </TouchableOpacity>
-              </View>
-              <View style={styles.resultDivider} />
-              <View style={styles.resultRow}>
-                <Text style={styles.rowLabel}>Timestamp :</Text>
-                <Text style={[styles.rowValue, styles.timestampValue]}>
-                  {currentResult ? formatTimestamp(currentResult.timestamp) : '—'}
-                </Text>
-              </View>
-            </View>
+                {!!currentResult?.image && (
+                  <View style={styles.resultImageWrap}>
+                    <Image source={{ uri: currentResult.image }} style={styles.resultImage} />
+                    {(currentResult.boxes ?? []).map((box, index) => {
+                      const mapped = mapBoxToLetterbox(box, imageAspectRatio);
+                      return (
+                        <View
+                          key={`${index}-${box.classIndex}-${box.confidence}`}
+                          style={[
+                            styles.resultBox,
+                            {
+                              left: `${mapped.leftPct}%`,
+                              top: `${mapped.topPct}%`,
+                              width: `${mapped.widthPct}%`,
+                              height: `${mapped.heightPct}%`,
+                            },
+                          ]}
+                        >
+                          <Text style={styles.resultBoxLabel}>
+                            {box.label} {(box.confidence * 100).toFixed(1)}%
+                          </Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                )}
 
-            <View style={styles.resultActions}>
-              <TouchableOpacity style={styles.retakeBtn} onPress={handleRetake} activeOpacity={0.8}>
-                <MaterialIcons name="replay" size={18} color={colors.textSecondary} />
-                <Text style={styles.retakeBtnText}>Retake</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.saveBtn} onPress={saveScan} activeOpacity={0.8}>
-                <MaterialIcons name="save-alt" size={18} color="#fff" />
-                <Text style={styles.saveBtnText}>Save</Text>
-              </TouchableOpacity>
-            </View>
+                <View style={styles.resultRows}>
+                  <View style={styles.resultRow}>
+                    <Text style={styles.rowLabel}>Variety :</Text>
+                    <Text style={styles.rowValue}>{currentResult?.label ?? '—'}</Text>
+                  </View>
+                  <View style={styles.resultDivider} />
+                  <View style={styles.resultRow}>
+                    <Text style={styles.rowLabel}>Confidence :</Text>
+                    <Text style={styles.rowValue}>{currentResult ? `${(currentResult.confidence * 100).toFixed(1)}%` : '—'}</Text>
+                  </View>
+                  {currentResult?.quality && (
+                    <>
+                      <View style={styles.resultDivider} />
+                      <View style={styles.resultRow}>
+                        <Text style={styles.rowLabel}>Quality :</Text>
+                        <Text style={styles.rowValue}>{currentResult.quality}</Text>
+                      </View>
+                    </>
+                  )}
+                  {currentResult?.maturity && (
+                    <>
+                      <View style={styles.resultDivider} />
+                      <View style={styles.resultRow}>
+                        <Text style={styles.rowLabel}>Maturity :</Text>
+                        <Text style={styles.rowValue}>{currentResult.maturity}</Text>
+                      </View>
+                    </>
+                  )}
+                  {currentResult && (
+                    <>
+                      <View style={styles.resultDivider} />
+                      <View style={styles.resultRow}>
+                        <Text style={styles.rowLabel}>Timestamp :</Text>
+                        <Text style={styles.rowValue}>{formatTimestamp(currentResult.timestamp)}</Text>
+                      </View>
+                    </>
+                  )}
+                </View>
+
+                <View style={styles.resultActions}>
+                  <TouchableOpacity style={styles.retakeBtn} onPress={handleRetake} activeOpacity={0.8}>
+                    <MaterialIcons name="replay" size={18} color={colors.textSecondary} />
+                    <Text style={styles.retakeBtnText}>Retake</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.saveBtn}
+                    onPress={saveScan}
+                    activeOpacity={0.8}
+                  >
+                    <MaterialIcons name="save-alt" size={18} color="#fff" />
+                    <Text style={styles.saveBtnText}>Save</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
           </View>
         </View>
       </Modal>
@@ -540,7 +736,7 @@ const createCameraStyles = (colors: typeof Colors) => StyleSheet.create({
   previewImage: {
     width: '100%',
     height: '100%',
-    resizeMode: 'cover',
+    resizeMode: 'contain',
   },
   imagePlaceholder: {
     justifyContent: 'center',
@@ -785,6 +981,39 @@ const createCameraStyles = (colors: typeof Colors) => StyleSheet.create({
     gap: 0,
     marginBottom: Spacing.xl,
   },
+  resultImageWrap: {
+    width: '100%',
+    aspectRatio: 1,
+    borderRadius: BorderRadius.lg,
+    overflow: 'hidden',
+    marginBottom: Spacing.lg,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    position: 'relative',
+  },
+  resultImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'contain',
+  },
+  resultBox: {
+    position: 'absolute',
+    borderWidth: 2,
+    borderColor: colors.error,
+    backgroundColor: 'rgba(255, 87, 34, 0.1)',
+  },
+  resultBoxLabel: {
+    position: 'absolute',
+    top: -22,
+    left: 0,
+    color: '#fff',
+    backgroundColor: colors.error,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    fontSize: 11,
+    fontWeight: '700',
+  },
   resultRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -840,6 +1069,9 @@ const createCameraStyles = (colors: typeof Colors) => StyleSheet.create({
     paddingVertical: Spacing.md,
     borderRadius: BorderRadius.lg,
   },
+  saveBtnDisabled: {
+    opacity: 0.45,
+  },
   saveBtnText: {
     color: '#fff',
     fontWeight: '600',
@@ -863,5 +1095,64 @@ const createCameraStyles = (colors: typeof Colors) => StyleSheet.create({
   savedText: {
     ...Typography.h3,
     color: colors.text,
+  } as any,
+
+  liveSheet: {
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.xl,
+    width: '100%',
+    ...Shadows.md,
+    shadowColor: colors.primaryDark,
+    shadowOpacity: 0.12,
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  livePreviewArea: {
+    width: '100%',
+    aspectRatio: 1,
+    borderRadius: BorderRadius.lg,
+    overflow: 'hidden',
+    backgroundColor: '#000',
+    marginBottom: Spacing.md,
+    position: 'relative',
+  },
+  liveCamera: {
+    flex: 1,
+  },
+  liveCameraFallback: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#111827',
+  },
+  liveCameraFallbackText: {
+    ...Typography.bodySmall,
+    color: '#e5e7eb',
+  } as any,
+  liveBox: {
+    position: 'absolute',
+    borderWidth: 2,
+    borderColor: '#EF4444',
+    justifyContent: 'flex-start',
+    alignItems: 'flex-start',
+  },
+  liveBoxLabelWrap: {
+    backgroundColor: 'rgba(239,68,68,0.9)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  liveBoxLabel: {
+    ...Typography.caption,
+    color: '#fff',
+    fontSize: 11,
+  } as any,
+  liveStatusRow: {
+    marginBottom: Spacing.lg,
+  },
+  liveStatusText: {
+    ...Typography.bodySmall,
+    color: colors.textSecondary,
   } as any,
 });

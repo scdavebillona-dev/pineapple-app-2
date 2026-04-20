@@ -21,12 +21,9 @@ npm install react-native-onnxruntime
 cd ios && pod install && cd ..
 ```
 
-**Option B: TensorFlow Lite (if ONNX not available)**
+**Option B: Not needed for this project**
 ```bash
-# First, convert ONNX to TFLite format using official converter
-# Then install:
-npm install @tensorflow/tfjs @tensorflow/tfjs-react-native
-npm install react-native-jpeg
+# This app now uses ONNX Runtime only.
 ```
 
 ### Step 2: Copy Model Files
