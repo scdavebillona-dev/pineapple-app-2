@@ -27,7 +27,6 @@ interface ScanResult {
   label: string;
   timestamp: string;
   image?: string;
-  boxes?: InferenceService.DetectionBox[];
   quality?: string;
   qualityConfidence?: number;
   maturity?: string;
@@ -106,6 +105,7 @@ export default function CameraScreen() {
   const [model, setModel] = useState<any>(null);
   const [showResultModal, setShowResultModal] = useState(false);
   const [showSavedModal, setShowSavedModal] = useState(false);
+  const [showConfidenceModal, setShowConfidenceModal] = useState(false);
   const [showModelInfoModal, setShowModelInfoModal] = useState(false);
   const [showGuideModal, setShowGuideModal] = useState(false);
   const [showLiveScanModal, setShowLiveScanModal] = useState(false);
@@ -236,7 +236,10 @@ export default function CameraScreen() {
         hasPineapple: inferenceResult.detection.hasPineapple,
         variety: inferenceResult.variety.label,
         confidence: inferenceResult.variety.confidence,
-        boxCount: inferenceResult.boxes.length,
+        quality: inferenceResult.quality.label,
+        qualityConfidence: inferenceResult.quality.confidence,
+        maturity: inferenceResult.maturity.label,
+        maturityConfidence: inferenceResult.maturity.confidence,
         detectionError: inferenceResult.detection.error,
       });
       
@@ -251,7 +254,6 @@ export default function CameraScreen() {
           label: 'No Pineapple detected',
           timestamp: new Date().toISOString(),
           image: uri,
-          boxes: inferenceResult.boxes ?? [],
         });
         setShowResultModal(true);
         return;
@@ -263,8 +265,7 @@ export default function CameraScreen() {
         label: inferenceResult.variety.label,
         timestamp: new Date().toISOString(),
         image: uri,
-        boxes: inferenceResult.boxes ?? [],
-        quality: inferenceResult.quality.label?.replace(/High Quality/i, 'Extra Class') || 'Extra Class',
+        quality: inferenceResult.quality.label,
         qualityConfidence: inferenceResult.quality.confidence,
         maturity: inferenceResult.maturity.label !== 'Unknown' ? inferenceResult.maturity.label : undefined,
         maturityConfidence: inferenceResult.maturity.confidence,
@@ -290,7 +291,7 @@ export default function CameraScreen() {
         confidence: currentResult.confidence,
         uri: currentResult.image,
         timestamp: currentResult.timestamp,
-        quality: currentResult.quality?.replace(/High Quality/i, 'Extra Class') || 'Extra Class',
+        quality: currentResult.quality || 'Extra Class',
         maturity: currentResult.maturity,
         metadata: { qualityConfidence: currentResult.qualityConfidence, maturityConfidence: currentResult.maturityConfidence },
       });
@@ -316,6 +317,7 @@ export default function CameraScreen() {
   };
 
   const handleRetake = () => {
+    setShowConfidenceModal(false);
     setShowResultModal(false);
     setCapturedImage(null);
     setCurrentResult(null);
@@ -500,27 +502,6 @@ export default function CameraScreen() {
                 {!!currentResult?.image && (
                   <View style={styles.resultImageWrap}>
                     <Image source={{ uri: currentResult.image }} style={styles.resultImage} />
-                    {(currentResult.boxes ?? []).map((box, index) => {
-                      const mapped = mapBoxToLetterbox(box, imageAspectRatio);
-                      return (
-                        <View
-                          key={`${index}-${box.classIndex}-${box.confidence}`}
-                          style={[
-                            styles.resultBox,
-                            {
-                              left: `${mapped.leftPct}%`,
-                              top: `${mapped.topPct}%`,
-                              width: `${mapped.widthPct}%`,
-                              height: `${mapped.heightPct}%`,
-                            },
-                          ]}
-                        >
-                          <Text style={styles.resultBoxLabel}>
-                            {box.label} {(box.confidence * 100).toFixed(1)}%
-                          </Text>
-                        </View>
-                      );
-                    })}
                   </View>
                 )}
 
@@ -531,36 +512,25 @@ export default function CameraScreen() {
                   </View>
                   <View style={styles.resultDivider} />
                   <View style={styles.resultRow}>
-                    <Text style={styles.rowLabel}>Confidence :</Text>
-                    <Text style={styles.rowValue}>{currentResult ? `${(currentResult.confidence * 100).toFixed(1)}%` : '—'}</Text>
+                    <Text style={styles.rowLabel}>Maturity :</Text>
+                    <Text style={styles.rowValue}>{currentResult?.maturity ?? '—'}</Text>
                   </View>
-                  {currentResult?.quality && (
-                    <>
-                      <View style={styles.resultDivider} />
-                      <View style={styles.resultRow}>
-                        <Text style={styles.rowLabel}>Quality :</Text>
-                        <Text style={styles.rowValue}>{currentResult.quality}</Text>
-                      </View>
-                    </>
-                  )}
-                  {currentResult?.maturity && (
-                    <>
-                      <View style={styles.resultDivider} />
-                      <View style={styles.resultRow}>
-                        <Text style={styles.rowLabel}>Maturity :</Text>
-                        <Text style={styles.rowValue}>{currentResult.maturity}</Text>
-                      </View>
-                    </>
-                  )}
-                  {currentResult && (
-                    <>
-                      <View style={styles.resultDivider} />
-                      <View style={styles.resultRow}>
-                        <Text style={styles.rowLabel}>Timestamp :</Text>
-                        <Text style={styles.rowValue}>{formatTimestamp(currentResult.timestamp)}</Text>
-                      </View>
-                    </>
-                  )}
+                  <View style={styles.resultDivider} />
+                  <View style={styles.resultRow}>
+                    <Text style={styles.rowLabel}>Quality :</Text>
+                    <Text style={styles.rowValue}>{currentResult?.quality ?? '—'}</Text>
+                  </View>
+                  <View style={styles.resultDivider} />
+                  <View style={styles.resultRow}>
+                    <Text style={styles.rowLabel}>Confidence :</Text>
+                    <TouchableOpacity
+                      style={styles.viewConfidenceBtn}
+                      onPress={() => setShowConfidenceModal(true)}
+                      activeOpacity={0.8}
+                    >
+                      <MaterialIcons name="visibility" size={16} color={colors.primary} />
+                    </TouchableOpacity>
+                  </View>
                 </View>
 
                 <View style={styles.resultActions}>
@@ -579,6 +549,57 @@ export default function CameraScreen() {
                 </View>
               </>
             )}
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={showConfidenceModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowConfidenceModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.resultSheet}>
+            <Text style={styles.resultTitle}>Model Confidence</Text>
+
+            <View style={styles.resultRows}>
+              <View style={styles.resultRow}>
+                <Text style={styles.rowLabel}>Variety :</Text>
+                <Text style={styles.rowValue}>
+                  {currentResult ? `${(currentResult.confidence * 100).toFixed(2)}%` : '—'}
+                </Text>
+              </View>
+              <View style={styles.resultDivider} />
+              <View style={styles.resultRow}>
+                <Text style={styles.rowLabel}>Maturity :</Text>
+                <Text style={styles.rowValue}>
+                  {currentResult?.maturityConfidence !== undefined
+                    ? `${(currentResult.maturityConfidence * 100).toFixed(2)}%`
+                    : '—'}
+                </Text>
+              </View>
+              <View style={styles.resultDivider} />
+              <View style={styles.resultRow}>
+                <Text style={styles.rowLabel}>Quality :</Text>
+                <Text style={styles.rowValue}>
+                  {currentResult?.qualityConfidence !== undefined
+                    ? `${(currentResult.qualityConfidence * 100).toFixed(2)}%`
+                    : '—'}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.resultActions}>
+              <TouchableOpacity
+                style={styles.saveBtn}
+                onPress={() => setShowConfidenceModal(false)}
+                activeOpacity={0.8}
+              >
+                <MaterialIcons name="close" size={18} color="#fff" />
+                <Text style={styles.saveBtnText}>Close</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -1034,6 +1055,17 @@ const createCameraStyles = (colors: typeof Colors) => StyleSheet.create({
     color: colors.text,
     flex: 1,
   } as any,
+  viewConfidenceBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 34,
+    height: 34,
+    paddingVertical: 6,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryMuted,
+  },
   timestampValue: {
     fontSize: 13,
   },
