@@ -29,16 +29,18 @@
     },
     "plugins": [
       "expo-router",
+      "onnxruntime-react-native",
       "react-native-vision-camera",
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/android-icon-background.png",
-          "imageWidth": 1,
-          "resizeMode": "cover",
+          "image": "./assets/images/native_icon.png",
+          "imageWidth": 210,
+          "resizeMode": "contain",
           "backgroundColor": "#ffffff",
           "dark": {
-            "backgroundColor": "#000000"
+            "image": "./assets/images/native_icon.png",
+            "backgroundColor": "#ffffff"
           }
         }
       ],

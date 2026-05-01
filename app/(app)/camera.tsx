@@ -124,14 +124,16 @@ export default function CameraScreen() {
   useEffect(() => {
     (async () => {
       try {
-        const apiStatus = await InferenceService.loadModel();
-        setModel(apiStatus);
+        const modelState = await InferenceService.loadModel();
+        setModel(modelState);
         setModelLoaded(true);
+        console.log('🟢 [Camera] ONNX models ready');
       } catch (error) {
-        console.error('Failed to initialize inference service:', error);
+        console.error('🔴 [Camera] Failed to get ONNX models:', error);
+        const reason = error instanceof Error ? error.message : String(error);
         Alert.alert(
-          'Service Unavailable',
-          'Could not initialize the inference service. Check network access and try again.'
+          'Models Not Ready',
+          `ONNX models failed to initialize.\n\n${reason}\n\nPlease restart the app.`
         );
       }
       await ImagePicker.requestMediaLibraryPermissionsAsync();

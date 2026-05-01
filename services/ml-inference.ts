@@ -102,6 +102,22 @@ const SMOOTH_MATURITY_MODEL_ASSET = require('../assets/model/smooth_maturity.onn
 let cachedVarietyModel: LoadedModelState | null = null;
 let modelLoadPromise: Promise<LoadedModelState> | null = null;
 
+function getOnnxRuntimeModule(): typeof import('onnxruntime-react-native') {
+  try {
+    const ortModule = require('onnxruntime-react-native') as typeof import('onnxruntime-react-native') | undefined;
+    if (!ortModule) {
+      throw new Error('onnxruntime-react-native resolved to an empty module');
+    }
+    return ortModule;
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    throw new Error(
+      `ONNX Runtime native module is unavailable in this Android build. ` +
+        `Rebuild the development app after installing/linking onnxruntime-react-native. Details: ${reason}`
+    );
+  }
+}
+
 function nowMs(): number {
   return Date.now();
 }
@@ -132,10 +148,12 @@ async function loadOnnxSession(assetModule: number, modelName: string): Promise<
     throw new Error(`Failed to resolve ONNX model asset URI for ${modelName}`);
   }
 
-  const ortModule = require('onnxruntime-react-native') as typeof import('onnxruntime-react-native');
+  const ortModule = getOnnxRuntimeModule();
   const InferenceSession = ortModule.InferenceSession ?? (ortModule as any).default?.InferenceSession;
   if (!InferenceSession) {
-    throw new Error('ONNX Runtime native module is unavailable in this build');
+    throw new Error(
+      'ONNX Runtime InferenceSession is unavailable. Rebuild the Android development app so the native ONNX module is included.'
+    );
   }
 
   const session = await InferenceSession.create(modelUri);
@@ -230,10 +248,12 @@ export async function preloadModels(): Promise<LoadedModelState> {
 }
 
 async function runModelRaw(model: ModelSession, preprocessedFrame: PreprocessedFrame): Promise<Float32Array> {
-  const ortModule = require('onnxruntime-react-native') as typeof import('onnxruntime-react-native');
+  const ortModule = getOnnxRuntimeModule();
   const Tensor = ortModule.Tensor ?? (ortModule as any).default?.Tensor;
   if (!Tensor) {
-    throw new Error('ONNX Runtime native module is unavailable in this build');
+    throw new Error(
+      'ONNX Runtime Tensor is unavailable. Rebuild the Android development app so the native ONNX module is included.'
+    );
   }
 
   const shape = preprocessedFrame.isChw
