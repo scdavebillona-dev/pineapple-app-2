@@ -3,6 +3,7 @@
  * Displayed during app initialization
  */
 
+import Constants from 'expo-constants';
 import { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
 
@@ -69,6 +70,8 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
     return () => dotLoop.stop();
   }, [dotAnims]);
 
+  const appVersion = Constants.expoConfig?.version ?? '1.0.0';
+
   return (
     <View style={styles.container}>
       <Animated.View
@@ -109,7 +112,7 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
         </View>
       </Animated.View>
 
-      <Animated.Text style={[styles.version, { opacity: fadeAnim }]}>Version 1.0.0</Animated.Text>
+      <Animated.Text style={[styles.version, { opacity: fadeAnim }]}>{appVersion}</Animated.Text>
     </View>
   );
 }

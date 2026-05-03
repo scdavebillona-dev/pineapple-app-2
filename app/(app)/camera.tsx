@@ -639,48 +639,21 @@ export default function CameraScreen() {
               <Text style={styles.guideSubTitle}>Maturity Index</Text>
               <Text style={styles.guideBodyText}>Based on the percentage of yellow/orange color development on the pineapple skin.</Text>
 
-              <Text style={styles.guideMinorTitle}>Smooth Cayenne</Text>
               <View style={styles.tableHeaderThree}>
-                <Text style={[styles.tableHeaderText, styles.colIndex]}>Index</Text>
                 <Text style={[styles.tableHeaderText, styles.colMaturity]}>Maturity</Text>
                 <Text style={[styles.tableHeaderText, styles.colDescThree]}>Description</Text>
               </View>
               <View style={styles.tableRowThree}>
-                <Text style={[styles.tableCellText, styles.colIndex]}>1-2</Text>
                 <Text style={[styles.tableCellText, styles.colMaturity]}>Unripe</Text>
-                <Text style={[styles.tableCellText, styles.colDescThree]}>Mostly green skin, not ready for consumption</Text>
+                <Text style={[styles.tableCellText, styles.colDescThree]}>Mostly green skin, immature and firm, not ready for consumption</Text>
               </View>
               <View style={styles.tableRowThree}>
-                <Text style={[styles.tableCellText, styles.colIndex]}>3-4</Text>
                 <Text style={[styles.tableCellText, styles.colMaturity]}>Ripe</Text>
-                <Text style={[styles.tableCellText, styles.colDescThree]}>Partial yellowing, suitable for harvest and market</Text>
+                <Text style={[styles.tableCellText, styles.colDescThree]}>Partial yellowing, balanced color, suitable for market</Text>
               </View>
               <View style={styles.tableRowThree}>
-                <Text style={[styles.tableCellText, styles.colIndex]}>5-6</Text>
                 <Text style={[styles.tableCellText, styles.colMaturity]}>Overripe</Text>
-                <Text style={[styles.tableCellText, styles.colDescThree]}>Mostly yellow/orange, softer texture, shorter shelf life</Text>
-              </View>
-
-              <Text style={styles.guideMinorTitle}>Queen</Text>
-              <View style={styles.tableHeaderThree}>
-                <Text style={[styles.tableHeaderText, styles.colIndex]}>Index</Text>
-                <Text style={[styles.tableHeaderText, styles.colMaturity]}>Maturity</Text>
-                <Text style={[styles.tableHeaderText, styles.colDescThree]}>Description</Text>
-              </View>
-              <View style={styles.tableRowThree}>
-                <Text style={[styles.tableCellText, styles.colIndex]}>1-2</Text>
-                <Text style={[styles.tableCellText, styles.colMaturity]}>Unripe</Text>
-                <Text style={[styles.tableCellText, styles.colDescThree]}>Green skin, immature and firm</Text>
-              </View>
-              <View style={styles.tableRowThree}>
-                <Text style={[styles.tableCellText, styles.colIndex]}>3</Text>
-                <Text style={[styles.tableCellText, styles.colMaturity]}>Ripe</Text>
-                <Text style={[styles.tableCellText, styles.colDescThree]}>Balanced color development, best for consumption</Text>
-              </View>
-              <View style={styles.tableRowThree}>
-                <Text style={[styles.tableCellText, styles.colIndex]}>4-5</Text>
-                <Text style={[styles.tableCellText, styles.colMaturity]}>Overripe</Text>
-                <Text style={[styles.tableCellText, styles.colDescThree]}>Advanced yellowing, very sweet but perishable</Text>
+                <Text style={[styles.tableCellText, styles.colDescThree]}>Mostly yellow/orange, very sweet, softer texture, shorter shelf life</Text>
               </View>
 
               <Text style={styles.guideSubTitle}>Quality Grade</Text>

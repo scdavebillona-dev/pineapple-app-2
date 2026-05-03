@@ -53,6 +53,7 @@ export default function StorageScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<ScanItem | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [showConfidenceModal, setShowConfidenceModal] = useState(false);
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
   const [showDeletedModal, setShowDeletedModal] = useState(false);
 
@@ -96,9 +97,14 @@ export default function StorageScreen() {
     if (searchQuery) {
       const lowerQuery = searchQuery.toLowerCase();
       result = result.filter(
-        item => 
-          item.name.toLowerCase().includes(lowerQuery) ||
-          item.quality?.toLowerCase().includes(lowerQuery)
+        item => {
+          const dateLabel = formatDescriptiveDate(item.date).toLowerCase();
+          return (
+            item.name.toLowerCase().includes(lowerQuery) ||
+            item.quality?.toLowerCase().includes(lowerQuery) ||
+            dateLabel.includes(lowerQuery)
+          );
+        }
       );
     }
 
@@ -297,16 +303,8 @@ export default function StorageScreen() {
                   <View style={styles.resultRow}>
                     <Text style={styles.rowLabel}>Confidence Level :</Text>
                     <TouchableOpacity
-                      onPress={() => {
-                        const varConf = (selectedItem.confidence * 100).toFixed(1) + '%';
-                        const clsConf = selectedItem.metadata?.qualityConfidence
-                          ? (selectedItem.metadata.qualityConfidence * 100).toFixed(1) + '%'
-                          : 'N/A';
-                        const matConf = selectedItem.metadata?.maturityConfidence
-                          ? (selectedItem.metadata.maturityConfidence * 100).toFixed(1) + '%'
-                          : 'N/A';
-                        Alert.alert('Confidence Details', `Variety: ${varConf}\nClass: ${clsConf}\nMaturity: ${matConf}`);
-                      }}
+                      style={styles.viewConfidenceBtn}
+                      onPress={() => selectedItem && setShowConfidenceModal(true)}
                       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     >
                       <MaterialIcons name="visibility" size={20} color={colors.primary} />
@@ -343,6 +341,57 @@ export default function StorageScreen() {
             )}
           </TouchableOpacity>
         </TouchableOpacity>
+      </Modal>
+
+      <Modal
+        visible={showConfidenceModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowConfidenceModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.resultSheet}>
+            <Text style={styles.resultTitle}>Model Confidence</Text>
+
+            <View style={styles.resultRows}>
+              <View style={styles.resultRow}>
+                <Text style={styles.rowLabel}>Variety :</Text>
+                <Text style={styles.rowValue}>
+                  {selectedItem ? `${(selectedItem.confidence * 100).toFixed(2)}%` : '—'}
+                </Text>
+              </View>
+              <View style={styles.resultDivider} />
+              <View style={styles.resultRow}>
+                <Text style={styles.rowLabel}>Maturity :</Text>
+                <Text style={styles.rowValue}>
+                  {selectedItem?.metadata?.maturityConfidence !== undefined
+                    ? `${(selectedItem.metadata.maturityConfidence * 100).toFixed(2)}%`
+                    : '—'}
+                </Text>
+              </View>
+              <View style={styles.resultDivider} />
+              <View style={styles.resultRow}>
+                <Text style={styles.rowLabel}>Quality :</Text>
+                <Text style={styles.rowValue}>
+                  {selectedItem?.metadata?.qualityConfidence !== undefined
+                    ? `${(selectedItem.metadata.qualityConfidence * 100).toFixed(2)}%`
+                    : '—'}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.resultActions}>
+              <TouchableOpacity
+                style={styles.saveBtn}
+                onPress={() => setShowConfidenceModal(false)}
+                activeOpacity={0.8}
+              >
+                <MaterialIcons name="close" size={18} color="#fff" />
+                <Text style={styles.saveBtnText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </Modal>
 
       {/* Deleted Confirmation Modal */}
@@ -460,6 +509,23 @@ const createStorageStyles = (colors: typeof Colors) => StyleSheet.create({
     gap: 0,
     marginBottom: Spacing.xl,
   },
+  resultSheet: {
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.xl,
+    width: '100%',
+    ...Shadows.md,
+    shadowColor: colors.primaryDark,
+    shadowOpacity: 0.12,
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  resultTitle: {
+    ...Typography.h3,
+    color: colors.text,
+    marginBottom: Spacing.lg,
+  } as any,
   resultRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -480,12 +546,39 @@ const createStorageStyles = (colors: typeof Colors) => StyleSheet.create({
     color: colors.text,
     flex: 1,
   } as any,
+  viewConfidenceBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 34,
+    height: 34,
+    paddingVertical: 6,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryMuted,
+  },
   timestampValue: {
     fontSize: 13,
   },
   resultActions: {
     flexDirection: 'row',
     gap: Spacing.md,
+  },
+  saveBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    backgroundColor: '#DC2626',
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.lg,
+  },
+  saveBtnText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 15,
+    fontFamily: 'Montserrat_600SemiBold',
   },
   closeBtn: {
     flex: 1,

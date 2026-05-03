@@ -27,6 +27,7 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedScan, setSelectedScan] = useState<ScanResult | null>(null);
   const [detailsVisible, setDetailsVisible] = useState(false);
+  const [showConfidenceModal, setShowConfidenceModal] = useState(false);
   const [showDeletedModal, setShowDeletedModal] = useState(false);
 
   const loadData = useCallback(async () => {
@@ -218,17 +219,8 @@ export default function HomeScreen() {
                   <View style={styles.resultRow}>
                     <Text style={styles.rowLabel}>Confidence Level :</Text>
                     <TouchableOpacity
-                      onPress={() => {
-                        if (!selectedScan) return;
-                        const varConf = (selectedScan.confidence * 100).toFixed(1) + '%';
-                        const clsConf = selectedScan.qualityConfidence
-                          ? (selectedScan.qualityConfidence * 100).toFixed(1) + '%'
-                          : 'N/A';
-                        const matConf = selectedScan.maturityConfidence
-                          ? (selectedScan.maturityConfidence * 100).toFixed(1) + '%'
-                          : 'N/A';
-                        Alert.alert('Confidence Details', `Variety: ${varConf}\nClass: ${clsConf}\nMaturity: ${matConf}`);
-                      }}
+                      style={styles.viewConfidenceBtn}
+                      onPress={() => selectedScan && setShowConfidenceModal(true)}
                       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     >
                       <MaterialIcons name="visibility" size={20} color={colors.primary} />
@@ -285,6 +277,57 @@ export default function HomeScreen() {
             )}
           </TouchableOpacity>
         </TouchableOpacity>
+      </Modal>
+
+      <Modal
+        visible={showConfidenceModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowConfidenceModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.resultSheet}>
+            <Text style={styles.resultTitle}>Model Confidence</Text>
+
+            <View style={styles.resultRows}>
+              <View style={styles.resultRow}>
+                <Text style={styles.rowLabel}>Variety :</Text>
+                <Text style={styles.rowValue}>
+                  {selectedScan ? `${(selectedScan.confidence * 100).toFixed(2)}%` : '—'}
+                </Text>
+              </View>
+              <View style={styles.resultDivider} />
+              <View style={styles.resultRow}>
+                <Text style={styles.rowLabel}>Maturity :</Text>
+                <Text style={styles.rowValue}>
+                  {selectedScan?.maturityConfidence !== undefined
+                    ? `${(selectedScan.maturityConfidence * 100).toFixed(2)}%`
+                    : '—'}
+                </Text>
+              </View>
+              <View style={styles.resultDivider} />
+              <View style={styles.resultRow}>
+                <Text style={styles.rowLabel}>Quality :</Text>
+                <Text style={styles.rowValue}>
+                  {selectedScan?.qualityConfidence !== undefined
+                    ? `${(selectedScan.qualityConfidence * 100).toFixed(2)}%`
+                    : '—'}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.resultActions}>
+              <TouchableOpacity
+                style={styles.saveBtn}
+                onPress={() => setShowConfidenceModal(false)}
+                activeOpacity={0.8}
+              >
+                <MaterialIcons name="close" size={18} color="#fff" />
+                <Text style={styles.saveBtnText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </Modal>
 
       <Modal
@@ -405,6 +448,23 @@ const createStyles = (colors: typeof Colors) => StyleSheet.create({
     gap: 0,
     marginBottom: Spacing.xl,
   },
+  resultSheet: {
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.xl,
+    width: '100%',
+    ...Shadows.md,
+    shadowColor: colors.primaryDark,
+    shadowOpacity: 0.12,
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  resultTitle: {
+    ...Typography.h3,
+    color: colors.text,
+    marginBottom: Spacing.lg,
+  },
   resultRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -425,12 +485,39 @@ const createStyles = (colors: typeof Colors) => StyleSheet.create({
     color: colors.text,
     flex: 1,
   },
+  viewConfidenceBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 34,
+    height: 34,
+    paddingVertical: 6,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryMuted,
+  },
   timestampValue: {
     fontSize: 13,
   },
   resultActions: {
     flexDirection: 'row',
     gap: Spacing.md,
+  },
+  saveBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    backgroundColor: '#DC2626',
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.lg,
+  },
+  saveBtnText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 15,
+    fontFamily: 'Montserrat_600SemiBold',
   },
   closeBtn: {
     flex: 1,
